@@ -5,6 +5,7 @@ import { submitMagsterPaymentRequest } from "@/lib/magster/checkout";
 import { loadActivePaymentMethods } from "@/lib/magster/payment-methods";
 import { uploadPaymentReceipt } from "@/lib/magster/receipts";
 import {
+  findMagsterStudentIdByPhone,
   loadRegistrationCatalog,
   isPhoneTakenForNewRegistration,
   registerMagsterStudent,
@@ -101,7 +102,17 @@ export async function POST(request: Request) {
     }
 
     const session = await readAppSession();
-    if (!session.studentId) {
+
+    // A previous checkout may have left a studentId in the session cookie.
+    // Only reuse it when it actually corresponds to the submitted phone —
+    // otherwise treat this as a brand-new registration. Reusing a stale id
+    // would silently re-purchase onto another student's account and hide
+    // new registrations from the admin panel.
+    const phoneStudentId = await findMagsterStudentIdByPhone(profile.phone);
+    const reuseStudent = session.studentId != null && phoneStudentId === session.studentId;
+    let studentId = reuseStudent ? session.studentId : null;
+
+    if (!studentId) {
       const phoneTaken = await isPhoneTakenForNewRegistration(profile.phone, null);
       if (phoneTaken) {
         return NextResponse.json(
@@ -109,9 +120,6 @@ export async function POST(request: Request) {
           { status: 409 },
         );
       }
-    }
-    let studentId = session.studentId;
-    if (!studentId) {
       const registered = await registerMagsterStudent({
         fullName: profile.fullName,
         phone: profile.phone,
