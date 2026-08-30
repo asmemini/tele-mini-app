@@ -1,5 +1,3 @@
-"use client";
-
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 const primaryClassName =
@@ -20,15 +18,7 @@ export function PrimaryButton({
   const classes = `${primaryClassName} ${className}`;
   if (href) {
     return (
-      <a
-        href={href}
-        className={classes}
-        onClick={(event) => {
-          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-          event.preventDefault();
-          window.location.assign(href);
-        }}
-      >
+      <a href={href} className={classes}>
         {children}
       </a>
     );

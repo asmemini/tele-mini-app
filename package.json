@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node --use-system-ca ./node_modules/next/dist/bin/next dev --turbopack --hostname 0.0.0.0",
+    "dev": "node --use-system-ca ./node_modules/next/dist/bin/next dev --turbopack",
     "build": "node --use-system-ca ./node_modules/next/dist/bin/next build",
-    "start": "node --use-system-ca ./node_modules/next/dist/bin/next start --hostname 0.0.0.0",
+    "start": "node --use-system-ca ./node_modules/next/dist/bin/next start",
     "lint": "eslint"
   },
   "dependencies": {

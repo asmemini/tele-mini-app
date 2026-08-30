@@ -39,13 +39,12 @@ export async function GET() {
       registration,
     });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
-    console.error("Unable to load Magster data:", detail);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
         ok: false,
         message: "Unable to load Magster data.",
-        detail,
+        detail: message,
       },
       { status: 500 },
     );

@@ -28,6 +28,8 @@ export const MagsterRpc = {
   grantCourseAccess: "grant_course_access",
   grantBundleAccess: "grant_bundle_access",
   adminApprovePaymentRequest: "admin_approve_payment_request",
+  attachStudentTelegram: "attach_student_telegram",
+  linkStudentTelegramByPin: "link_student_telegram_by_pin",
 } as const;
 
 export const MagsterStorage = {

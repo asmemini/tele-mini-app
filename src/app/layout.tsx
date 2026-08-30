@@ -1,4 +1,3 @@
-import type { CSSProperties, ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { MiniAppShell } from "@/components/layout/mini-app-shell";
@@ -20,19 +19,14 @@ export const viewport: Viewport = {
   themeColor: MAGSTER_COLORS.primary,
 };
 
-const telegramViewportStyle = {
-  "--tg-viewport-height": "100vh",
-  "--tg-viewport-stable-height": "100vh",
-} as CSSProperties;
-
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: ReactNode;
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning style={telegramViewportStyle}>
-      <body className="font-sans antialiased" suppressHydrationWarning>
+    <html lang="en">
+      <body className="font-sans antialiased">
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"

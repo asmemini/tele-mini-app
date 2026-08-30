@@ -216,6 +216,11 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   const [legalBody, setLegalBody] = useState("");
   const [legalLoading, setLegalLoading] = useState(false);
   const [previewBundle, setPreviewBundle] = useState<MagsterBundle | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkPin, setLinkPin] = useState("");
+  const [linkPinError, setLinkPinError] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [linked, setLinked] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const phoneCheckSeq = useRef(0);
 
@@ -252,6 +257,46 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
     } catch {
       if (seq !== phoneCheckSeq.current) return "available";
       return "error";
+    }
+  }
+
+  const phoneTaken = profileErrors.phone === validationMessages.phoneTaken;
+
+  async function submitExistingLink() {
+    if (linking) return;
+    if (!/^\d{4}$/.test(linkPin.trim())) {
+      setLinkPinError("Enter the 4-digit PIN for this Magster account.");
+      return;
+    }
+    setLinking(true);
+    setLinkPinError(null);
+    try {
+      const response = await fetch("/api/link-existing", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: profile.phone, pin: linkPin.trim() }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        code?: string;
+      };
+      if (!response.ok || !payload.ok) {
+        setLinkPinError(
+          payload.code === "incorrect_pin"
+            ? "Incorrect PIN for this account. Please try again."
+            : payload.message || "Could not link your account.",
+        );
+        return;
+      }
+      setLinked(true);
+      setLinkPinError(null);
+      window.setTimeout(() => router.push("/"), 1200);
+    } catch {
+      setLinkPinError("Could not link your account. Please try again.");
+    } finally {
+      setLinking(false);
     }
   }
 
@@ -461,6 +506,25 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
               }}
               error={profileErrors.phone}
             />
+            {phoneTaken ? (
+              <div className="rounded-card border border-brand/30 bg-brand/5 p-3">
+                <p className="text-xs leading-5 text-muted">
+                  This phone number is already registered to a Magster account. If it&apos;s yours,
+                  link it to your Telegram to continue without creating a new account.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkOpen(true);
+                    setLinkPin("");
+                    setLinkPinError(null);
+                  }}
+                  className="mt-2 text-sm font-bold text-brand touch-manipulation"
+                >
+                  I already have an account — link it
+                </button>
+              </div>
+            ) : null}
             <OptionPicker
               label="Gender"
               options={GENDERS}
@@ -856,6 +920,71 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                 </article>
               )}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {linkOpen ? (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close link account"
+            className="absolute inset-0 bg-ink/40"
+            onClick={() => setLinkOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[85dvh] w-full max-w-[430px] flex-col rounded-t-3xl bg-surface px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 shadow-soft">
+            {linked ? (
+              <>
+                <p className="text-center text-3xl" aria-hidden="true">
+                  🎉
+                </p>
+                <h2 className="mt-3 text-center text-xl font-bold text-ink">
+                  Telegram linked to your account
+                </h2>
+                <p className="mt-2 text-center text-sm text-muted">
+                  Your Magster account is now connected to Telegram.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-ink">Link your account</h2>
+                  <button
+                    type="button"
+                    className="h-11 shrink-0 text-sm font-semibold text-brand"
+                    onClick={() => setLinkOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+                <p className="mt-1 text-sm text-muted">
+                  Enter the 4-digit PIN for the Magster account registered to{" "}
+                  <span className="font-semibold text-ink">{profile.phone}</span>.
+                </p>
+                <div className="mt-5">
+                  <TextField
+                    id="link-pin"
+                    label="PIN"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    type="password"
+                    maxLength={4}
+                    placeholder="••••"
+                    value={linkPin}
+                    onChange={(event) => {
+                      setLinkPin(event.target.value.replace(/\D/g, ""));
+                      setLinkPinError(null);
+                    }}
+                    error={linkPinError ?? undefined}
+                  />
+                </div>
+                <div className="mt-6">
+                  <PrimaryButton onClick={() => void submitExistingLink()} disabled={linking}>
+                    {linking ? "Linking…" : "Link account"}
+                  </PrimaryButton>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}

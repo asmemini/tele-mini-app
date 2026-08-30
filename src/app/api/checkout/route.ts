@@ -12,6 +12,7 @@ import {
 } from "@/lib/magster/registration";
 import { MINI_APP_DEFAULT_PIN, MINI_APP_TERMS_ACCEPTED } from "@/lib/server/registration-defaults";
 import { readAppSession, writeAppSession } from "@/lib/session/app-session";
+import { attachTelegramToStudent } from "@/lib/magster/telegram-link";
 import {
   hasErrors,
   validateProfile,
@@ -135,6 +136,17 @@ export async function POST(request: Request) {
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
       });
+    }
+
+    // Associate the verified Telegram identity with the student. This covers both
+    // brand-new students (just registered above) and existing students whose
+    // signed app session already identified them. It never creates a duplicate
+    // account — it only updates the identified student's telegram_* columns.
+    // A Telegram link failing must not block the payment submission.
+    try {
+      await attachTelegramToStudent(studentId, session.deviceId);
+    } catch (linkError) {
+      console.warn("Telegram link skipped (non-fatal):", linkError);
     }
 
     const bytes = Buffer.from(await receipt.arrayBuffer());

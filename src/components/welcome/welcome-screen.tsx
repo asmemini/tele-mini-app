@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CatalogPreview } from "@/components/catalog/catalog-preview";
 import { useTelegramIdentity } from "@/components/telegram/telegram-provider";
-import { MagsterLoadError } from "@/components/ui/magster-load-error";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import type { MiniAppConfig } from "@/lib/config/mini-app-config";
 import type { MagsterCatalog } from "@/lib/magster/types";
@@ -22,15 +21,13 @@ export function WelcomeScreen() {
   const [config, setConfig] = useState<MiniAppConfig | null>(null);
   const [catalog, setCatalog] = useState<MagsterCatalog | null>(null);
 
-  const loadCatalog = useCallback(() => {
+  useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     fetch("/api/bootstrap", { credentials: "include" })
       .then(async (response) => {
         const payload = (await response.json()) as BootstrapResponse;
         if (!response.ok || !payload.ok) {
-          throw new Error(payload.message || "Unable to load Magster data.");
+          throw new Error(payload.message || "Unable to load Magster.");
         }
         if (cancelled) return;
         setConfig(payload.config ?? null);
@@ -38,7 +35,7 @@ export function WelcomeScreen() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Unable to load Magster data.");
+        setError(err instanceof Error ? err.message : "Unable to load Magster.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,10 +44,6 @@ export function WelcomeScreen() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    return loadCatalog();
-  }, [loadCatalog]);
 
   const title = config?.welcomeTitle ?? "Welcome to Registration";
 
@@ -71,7 +64,9 @@ export function WelcomeScreen() {
 
       <div className="mt-2 min-h-0 flex-1">
         {error ? (
-          <MagsterLoadError message={error} onRetry={loadCatalog} showHomeLink={false} />
+          <div className="mx-5 mt-5 rounded-card border border-red-100 bg-white p-4 text-sm text-muted">
+            {error}
+          </div>
         ) : (
           <CatalogPreview
             courses={catalog?.courses ?? []}
