@@ -13,6 +13,7 @@ type PhoneFieldProps = {
 
 export function PhoneField({ id, value, onChange, error }: PhoneFieldProps) {
   const errorId = error ? `${id}-error` : undefined;
+  const noticeId = `${id}-telegram-notice`;
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-3">
@@ -40,10 +41,19 @@ export function PhoneField({ id, value, onChange, error }: PhoneFieldProps) {
           maxLength={LOCAL_PHONE_LENGTH}
           placeholder="XXXXXXXXX"
           aria-invalid={Boolean(error)}
-          aria-describedby={errorId}
+          aria-describedby={[noticeId, errorId].filter(Boolean).join(" ")}
           className="min-w-0 flex-1 bg-transparent px-3 text-base text-ink outline-none placeholder:text-hint"
         />
       </div>
+      <p
+        id={noticeId}
+        role="note"
+        className="mt-2 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] font-medium leading-5 text-ink"
+      >
+        Enter the phone number on the Telegram account you are using right now. Your private
+        channel invite is sent to this Telegram account only, so this number must match your
+        active Telegram number exactly.
+      </p>
       <FieldError id={errorId} message={error} />
     </div>
   );

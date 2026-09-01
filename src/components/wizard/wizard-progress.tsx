@@ -6,7 +6,7 @@ type WizardHeaderProps = {
 
 export function WizardHeader({ step, total, onBack }: WizardHeaderProps) {
   return (
-    <header className="-mx-5 shrink-0 bg-header text-white">
+    <header className="-mx-5 shrink-0 border-b border-line bg-white text-ink">
       <div className="flex items-center gap-1 px-2 pb-2 pt-[max(0.4rem,env(safe-area-inset-top))]">
         <button
           type="button"
@@ -27,7 +27,7 @@ export function WizardHeader({ step, total, onBack }: WizardHeaderProps) {
         <p className="min-w-0 truncate text-[13px] font-medium tracking-tight">
           Step {step} of {total}
         </p>
-        <span className="ml-auto pr-2 text-[11px] font-medium text-white/55">
+        <span className="ml-auto pr-2 text-[11px] font-medium text-muted">
           {Math.round((step / total) * 100)}%
         </span>
       </div>
@@ -35,7 +35,7 @@ export function WizardHeader({ step, total, onBack }: WizardHeaderProps) {
         {Array.from({ length: total }, (_, index) => (
           <span
             key={index}
-            className={`h-0.5 flex-1 rounded-full ${index < step ? "bg-white" : "bg-white/25"}`}
+            className={`h-0.5 flex-1 rounded-full ${index < step ? "bg-brand" : "bg-line"}`}
           />
         ))}
       </div>

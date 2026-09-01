@@ -27,6 +27,7 @@ import {
 } from "@/lib/validation/registration";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function parseIdList(raw: FormDataEntryValue | null): number[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
           ok: false,
           code: "telegram_unconfigured",
           message:
-            "The Mini App server is missing TELEGRAM_BOT_TOKEN. Add it and restart, then open Magster from Telegram again.",
+            "Telegram could not be verified on this Mini App host. Set TELEGRAM_BOT_TOKEN for the Vercel project, redeploy, then open Magster from Telegram again.",
         },
         { status: 503 },
       );

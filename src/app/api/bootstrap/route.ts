@@ -13,6 +13,9 @@ import { readInitDataFromJson, readInitDataFromRequest } from "@/lib/telegram/in
 import { readTelegramSession, toPublicIdentity } from "@/lib/telegram/session";
 import type { MiniAppResumePayload } from "@/lib/bootstrap/types";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return handleBootstrap();
 }

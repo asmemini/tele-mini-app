@@ -6,7 +6,9 @@ export const APP_DESCRIPTION =
 export const MAGSTER_COLORS = {
   primary: "#2563EB",
   primaryDark: "#1D4ED8",
-  header: "#0A0A0A",
+  /** Telegram Mini App chrome only (the native bar with the bot name). */
+  telegramChrome: "#000000",
+  header: "#FFFFFF",
   background: "#F8FAFC",
   surface: "#FFFFFF",
   text: "#0F172A",

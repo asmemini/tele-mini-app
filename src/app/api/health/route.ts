@@ -3,6 +3,9 @@ import { isTelegramBotConfigured } from "@/lib/env";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 import { MagsterTables } from "@/lib/magster/tables";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const client = getMagsterSupabase();

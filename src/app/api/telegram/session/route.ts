@@ -15,6 +15,9 @@ import {
   validateTelegramInitData,
 } from "@/lib/telegram/validate";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await readTelegramSession();
   return NextResponse.json({
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
         status: "unconfigured",
         identity: null,
         message:
-          "Telegram identity is not active yet. Add TELEGRAM_BOT_TOKEN on the server to validate initData.",
+          "Telegram could not be verified on this Mini App host. Set TELEGRAM_BOT_TOKEN for the Vercel project, redeploy, then open Magster from Telegram again.",
       },
       { status: 503 },
     );

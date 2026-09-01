@@ -6,7 +6,7 @@ export function LegalDocument({ title, body }: { title: string; body: string }) 
   const router = useRouter();
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <header className="flex items-center gap-1 bg-header px-2 pb-2.5 pt-[max(0.4rem,env(safe-area-inset-top))] text-white">
+      <header className="flex items-center gap-1 border-b border-line bg-white px-2 pb-2.5 pt-[max(0.4rem,env(safe-area-inset-top))] text-ink">
         <button
           type="button"
           aria-label="Back"

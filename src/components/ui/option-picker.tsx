@@ -62,7 +62,7 @@ export function OptionPicker({
           <button
             type="button"
             aria-label={`Close ${label} list`}
-            className="absolute inset-0 bg-header/45"
+            className="absolute inset-0 bg-ink/45"
             onClick={() => {
               setOpen(false);
               setQuery("");

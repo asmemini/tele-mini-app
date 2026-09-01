@@ -73,7 +73,7 @@ function catalogLockLabel(owned: boolean, purchasable: boolean): string | null {
 
 function CatalogLockBadge({ label }: { label: string }) {
   return (
-    <span className="mt-1.5 inline-flex rounded-full bg-header/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
+    <span className="mt-1.5 inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">
       {label}
     </span>
   );
@@ -99,7 +99,7 @@ function CourseSelectCard({
       aria-pressed={selected}
       disabled={disabled}
       className={`w-full rounded-card border px-2.5 py-2 text-left touch-manipulation ${
-        selected ? "border-header bg-header/5" : "border-line bg-surface"
+        selected ? "border-brand bg-brand/5" : "border-line bg-surface"
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div className="flex items-center gap-2.5">
@@ -155,7 +155,7 @@ function BundleSelectCard({
   return (
     <div
       className={`flex w-full items-stretch overflow-hidden rounded-card border ${
-        selected ? "border-header bg-header/5" : "border-line bg-surface"
+        selected ? "border-brand bg-brand/5" : "border-line bg-surface"
       } ${disabled ? "opacity-60" : ""}`}
     >
       <button
@@ -590,7 +590,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   if (!sessionReady) {
     return (
       <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <div className="-mx-5 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-white">
+        <div className="-mx-5 border-b border-line bg-white px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-ink">
           Magster
         </div>
         <p className="mt-16 text-center text-[14px] text-muted">Checking your Magster account…</p>
@@ -601,7 +601,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   if (success) {
     return (
       <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <div className="-mx-5 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-white">
+        <div className="-mx-5 border-b border-line bg-white px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-ink">
           Magster
         </div>
         <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
@@ -754,7 +754,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                 type="button"
                 onClick={() => setTab(item)}
                 className={`h-9 rounded-[10px] text-[13px] font-semibold touch-manipulation ${
-                  tab === item ? "bg-header text-white" : "text-muted"
+                  tab === item ? "bg-brand text-white" : "text-muted"
                 }`}
               >
                 {item === "bundles" ? "Bundles" : "Courses"}
@@ -829,7 +829,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                 <div
                   key={method.slug}
                   className={`rounded-card border ${
-                    selected ? "border-header bg-white" : "border-line bg-surface"
+                    selected ? "border-brand bg-white" : "border-line bg-surface"
                   }`}
                 >
                   <button
@@ -858,7 +858,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                         {method.accountHolder ? (
                           <button
                             type="button"
-                            className="shrink-0 text-[11px] font-semibold text-header"
+                            className="shrink-0 text-[11px] font-semibold text-brand"
                             onClick={() => void copyValue(`${method.slug}-holder`, method.accountHolder)}
                           >
                             {copiedField === `${method.slug}-holder` ? "Copied" : "Copy"}
@@ -877,7 +877,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                         {method.accountNumber ? (
                           <button
                             type="button"
-                            className="shrink-0 text-[11px] font-semibold text-header"
+                            className="shrink-0 text-[11px] font-semibold text-brand"
                             onClick={() => void copyValue(`${method.slug}-number`, method.accountNumber)}
                           >
                             {copiedField === `${method.slug}-number` ? "Copied" : "Copy"}
@@ -952,16 +952,15 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
               {receiptError}
             </p>
           ) : null}
-          {telegram.state === "browser" ||
-          telegram.state === "invalid" ||
-          telegram.state === "unconfigured" ? (
-            <p role="alert" className="mt-2 text-sm font-medium text-danger">
-              {telegram.message}
-            </p>
-          ) : null}
           {submitError ? (
             <p role="alert" className="mt-2 text-sm font-medium text-danger">
               {submitError}
+            </p>
+          ) : telegram.state === "browser" ||
+            telegram.state === "invalid" ||
+            telegram.state === "unconfigured" ? (
+            <p role="alert" className="mt-2 text-sm font-medium text-danger">
+              {telegram.message}
             </p>
           ) : null}
           {submitting ? (

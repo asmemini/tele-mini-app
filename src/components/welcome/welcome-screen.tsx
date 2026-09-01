@@ -65,7 +65,7 @@ export function WelcomeScreen() {
 
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <header className="shrink-0 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-white">
+      <header className="shrink-0 border-b border-line bg-white px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-ink">
         <p className="text-center text-[15px] font-semibold tracking-tight">Magster</p>
       </header>
       <div className="px-5 pt-3">

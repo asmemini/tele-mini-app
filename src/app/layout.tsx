@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: MAGSTER_COLORS.header,
+  themeColor: MAGSTER_COLORS.telegramChrome,
 };
 
 export default function RootLayout({

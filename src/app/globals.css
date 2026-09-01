@@ -4,7 +4,7 @@
   --color-brand: #2563eb;
   --color-brand-dark: #1d4ed8;
   --color-brand-soft: #e8eef8;
-  --color-header: #0a0a0a;
+  --color-header: #ffffff;
   --color-canvas: #f4f5f7;
   --color-surface: #ffffff;
   --color-ink: #111827;
@@ -19,7 +19,7 @@
   --radius-button: 12px;
   --radius-card: 14px;
   --shadow-soft: 0 6px 18px rgb(17 24 39 / 0.06);
-  --shadow-glow: 0 8px 16px rgb(17 24 39 / 0.18);
+  --shadow-glow: 0 8px 16px rgb(37 99 235 / 0.28);
 }
 
 html,
