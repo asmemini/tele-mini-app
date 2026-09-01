@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { MAGSTER_COLORS } from "@/lib/brand";
-import { establishTelegramSession } from "@/lib/telegram/client";
+import { establishTelegramSession, readTelegramWebAppInitData } from "@/lib/telegram/client";
 import type {
   PublicTelegramIdentity,
   TelegramLaunchState,
@@ -49,40 +49,50 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     webApp?.setBackgroundColor?.(MAGSTER_COLORS.background);
     if (webApp?.platform) setPlatform(webApp.platform);
 
-    const initData = webApp?.initData ?? "";
-    if (!initData) {
-      setState("browser");
-      setMessage("Opened outside Telegram. Identity is not verified.");
-      return;
-    }
-
     let cancelled = false;
-    setState("validating");
-    setMessage("Verifying Telegram identity…");
+    const startedAt = Date.now();
 
-    establishTelegramSession(initData)
-      .then((result) => {
-        if (cancelled) return;
-        if (result.status === "authenticated" && result.identity) {
-          setIdentity(result.identity);
-          setState("authenticated");
-          setMessage("Telegram identity verified.");
+    const connect = () => {
+      if (cancelled) return;
+      const initData = readTelegramWebAppInitData();
+      if (!initData) {
+        if (Date.now() - startedAt < 2500) {
+          window.setTimeout(connect, 120);
           return;
         }
-        if (result.status === "unconfigured") {
-          setState("unconfigured");
+        setState("browser");
+        setMessage("Opened outside Telegram. Identity is not verified.");
+        return;
+      }
+
+      setState("validating");
+      setMessage("Verifying Telegram identity…");
+
+      establishTelegramSession(initData)
+        .then((result) => {
+          if (cancelled) return;
+          if (result.status === "authenticated" && result.identity) {
+            setIdentity(result.identity);
+            setState("authenticated");
+            setMessage("Telegram identity verified.");
+            return;
+          }
+          if (result.status === "unconfigured") {
+            setState("unconfigured");
+            setMessage(result.message);
+            return;
+          }
+          setState("invalid");
           setMessage(result.message);
-          return;
-        }
-        setState("invalid");
-        setMessage(result.message);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setState("invalid");
-        setMessage("Telegram identity could not be verified.");
-      });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setState("invalid");
+          setMessage("Telegram identity could not be verified.");
+        });
+    };
 
+    connect();
     return () => {
       cancelled = true;
     };

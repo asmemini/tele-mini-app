@@ -2,7 +2,20 @@ import type { PublicTelegramIdentity } from "@/lib/telegram/types";
 
 export function readTelegramWebAppInitData(): string {
   if (typeof window === "undefined") return "";
-  return window.Telegram?.WebApp?.initData?.trim() ?? "";
+
+  const fromSdk = window.Telegram?.WebApp?.initData?.trim() ?? "";
+  if (fromSdk) return fromSdk;
+
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : "";
+  if (hash) {
+    const fromHash = new URLSearchParams(hash).get("tgWebAppData")?.trim();
+    if (fromHash) return fromHash;
+  }
+
+  const fromQuery = new URLSearchParams(window.location.search).get("tgWebAppData")?.trim();
+  return fromQuery ?? "";
 }
 
 export async function establishTelegramSession(
@@ -10,7 +23,10 @@ export async function establishTelegramSession(
 ): Promise<{ identity: PublicTelegramIdentity | null; status: string; message: string }> {
   const response = await fetch("/api/telegram/session", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Telegram-Init-Data": initData,
+    },
     credentials: "include",
     body: JSON.stringify({ initData }),
   });

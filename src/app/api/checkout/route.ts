@@ -14,6 +14,7 @@ import {
 import { MINI_APP_DEFAULT_PIN, MINI_APP_TERMS_ACCEPTED } from "@/lib/server/registration-defaults";
 import { createMiniAppDeviceId, readAppSession, writeAppSession } from "@/lib/session/app-session";
 import { attachTelegramToStudent } from "@/lib/magster/telegram-link";
+import { readInitDataFromRequest } from "@/lib/telegram/init-data";
 import {
   hasErrors,
   validateProfile,
@@ -158,7 +159,7 @@ export async function POST(request: Request) {
       await attachTelegramToStudent(
         studentId,
         session.deviceId,
-        String(form.get("initData") ?? ""),
+        readInitDataFromRequest(request, form),
       );
     } catch (linkError) {
       console.warn("Telegram link skipped (non-fatal):", linkError);

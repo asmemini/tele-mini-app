@@ -30,7 +30,10 @@ export function WelcomeScreen() {
     fetch("/api/bootstrap", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": readTelegramWebAppInitData(),
+      },
       body: JSON.stringify({ initData: readTelegramWebAppInitData() }),
     })
       .then(async (response) => {

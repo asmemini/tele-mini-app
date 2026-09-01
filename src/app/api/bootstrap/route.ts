@@ -8,6 +8,7 @@ import { loadMagsterPublicSettings } from "@/lib/magster/settings";
 import { attachTelegramToStudent, syncTelegramSessionFromInitData } from "@/lib/magster/telegram-link";
 import { isTelegramBotConfigured } from "@/lib/env";
 import { readAppSession } from "@/lib/session/app-session";
+import { readInitDataFromRequest } from "@/lib/telegram/init-data";
 import { readTelegramSession, toPublicIdentity } from "@/lib/telegram/session";
 
 export async function GET() {
@@ -16,7 +17,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { initData?: unknown } | null;
-  const initData = typeof body?.initData === "string" ? body.initData : "";
+  const initData =
+    (typeof body?.initData === "string" ? body.initData : "") ||
+    readInitDataFromRequest(request);
   return handleBootstrap(initData);
 }
 

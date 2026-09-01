@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { linkTelegramToExistingStudent } from "@/lib/magster/telegram-link";
 import { readAppSession, writeAppSession } from "@/lib/session/app-session";
+import { readInitDataFromRequest } from "@/lib/telegram/init-data";
 import { validateLocalPhone } from "@/lib/validation/registration";
 
 export const runtime = "nodejs";
@@ -15,7 +16,9 @@ export async function POST(request: Request) {
 
     const phone = String(body?.phone ?? "").trim();
     const pin = String(body?.pin ?? "").trim();
-    const initData = typeof body?.initData === "string" ? body.initData : "";
+    const initData =
+      (typeof body?.initData === "string" ? body.initData : "") ||
+      readInitDataFromRequest(request);
 
     const formatError = validateLocalPhone(phone);
     if (formatError || !PIN_PATTERN.test(pin)) {

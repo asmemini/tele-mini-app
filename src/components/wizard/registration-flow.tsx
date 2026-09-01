@@ -275,7 +275,10 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       const response = await fetch("/api/link-existing", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": readTelegramWebAppInitData(),
+        },
         body: JSON.stringify({
           phone: profile.phone,
           pin: linkPin.trim(),
@@ -419,10 +422,12 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       form.set("paymentMethod", paymentSlug);
       form.set("termsAccepted", termsAccepted ? "true" : "false");
       form.set("receipt", receipt);
-      form.set("initData", readTelegramWebAppInitData());
+      const initData = readTelegramWebAppInitData();
+      form.set("initData", initData);
       const response = await fetch("/api/checkout", {
         method: "POST",
         credentials: "include",
+        headers: { "X-Telegram-Init-Data": initData },
         body: form,
       });
       const payload = (await response.json()) as { ok?: boolean; message?: string; code?: string };

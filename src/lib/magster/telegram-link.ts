@@ -7,7 +7,7 @@ import {
   writeTelegramSession,
   type TelegramSession,
 } from "@/lib/telegram/session";
-import { validateTelegramInitData } from "@/lib/telegram/validate";
+import { TelegramInitDataError, validateTelegramInitData } from "@/lib/telegram/validate";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 
 export type AttachTelegramLinkResult =
@@ -28,19 +28,24 @@ async function resolveVerifiedTelegramSession(
   initData?: string | null,
 ): Promise<TelegramSession | null> {
   const raw = initData?.trim() ?? "";
-  if (raw && isTelegramBotConfigured()) {
-    try {
-      const env = getServerEnv();
-      const validated = validateTelegramInitData(
-        raw,
-        env.telegramBotToken,
-        env.telegramAuthMaxAgeSeconds,
-      );
-      const session = createTelegramSession(validated.user);
-      await writeTelegramSession(session);
-      return session;
-    } catch {
-      // Invalid initData on this request — fall back to a previously verified cookie.
+  if (raw) {
+    if (!isTelegramBotConfigured()) {
+      console.warn("Telegram initData was sent but TELEGRAM_BOT_TOKEN is not set on the Mini App server.");
+    } else {
+      try {
+        const env = getServerEnv();
+        const validated = validateTelegramInitData(
+          raw,
+          env.telegramBotToken,
+          env.telegramAuthMaxAgeSeconds,
+        );
+        const session = createTelegramSession(validated.user);
+        await writeTelegramSession(session);
+        return session;
+      } catch (error) {
+        const code = error instanceof TelegramInitDataError ? error.code : "invalid";
+        console.warn("Telegram initData could not be verified:", code);
+      }
     }
   }
 
@@ -66,7 +71,7 @@ export async function attachTelegramToStudent(
 ): Promise<AttachTelegramLinkResult> {
   const session = await resolveVerifiedTelegramSession(initData);
   if (!session) {
-    // No verified Telegram identity — nothing to link. Not an error.
+    console.warn("Telegram identity not linked: no verified Mini App initData for student", studentId);
     return { ok: true };
   }
 
