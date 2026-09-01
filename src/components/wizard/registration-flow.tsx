@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { useTelegramIdentity } from "@/components/telegram/telegram-provider";
 import { OptionPicker } from "@/components/ui/option-picker";
 import { PhoneField } from "@/components/ui/phone-field";
 import { PrimaryButton } from "@/components/ui/primary-button";
@@ -20,7 +21,11 @@ import {
 } from "@/lib/catalog/selection";
 import type { MagsterBundle, MagsterCourse } from "@/lib/magster/types";
 import { closeTelegramMiniApp } from "@/lib/telegram/close";
-import { readTelegramWebAppInitData } from "@/lib/telegram/client";
+import {
+  encodeInitDataForTransport,
+  readTelegramWebAppInitData,
+  waitForTelegramInitData,
+} from "@/lib/telegram/client";
 import {
   hasErrors,
   validateLocalPhone,
@@ -188,6 +193,7 @@ function BundleSelectCard({
 
 export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   const router = useRouter();
+  const telegram = useTelegramIdentity();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState<ProfileFields>({
     fullName: "",
@@ -411,6 +417,13 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const initData = await waitForTelegramInitData();
+      if (!initData) {
+        setSubmitError(
+          "Open Magster from the Telegram Mini App, not a normal browser, so Telegram can be linked.",
+        );
+        return;
+      }
       const form = new FormData();
       form.set("fullName", profile.fullName.trim());
       form.set("phone", profile.phone);
@@ -422,8 +435,8 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       form.set("paymentMethod", paymentSlug);
       form.set("termsAccepted", termsAccepted ? "true" : "false");
       form.set("receipt", receipt);
-      const initData = readTelegramWebAppInitData();
       form.set("initData", initData);
+      form.set("initDataB64", encodeInitDataForTransport(initData));
       const response = await fetch("/api/checkout", {
         method: "POST",
         credentials: "include",
@@ -793,6 +806,13 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
           {receiptError ? (
             <p role="alert" className="mt-2 text-sm font-medium text-danger">
               {receiptError}
+            </p>
+          ) : null}
+          {telegram.state === "browser" ||
+          telegram.state === "invalid" ||
+          telegram.state === "unconfigured" ? (
+            <p role="alert" className="mt-2 text-sm font-medium text-danger">
+              {telegram.message}
             </p>
           ) : null}
           {submitError ? (

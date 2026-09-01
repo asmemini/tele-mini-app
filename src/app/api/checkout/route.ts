@@ -13,8 +13,9 @@ import {
 } from "@/lib/magster/registration";
 import { MINI_APP_DEFAULT_PIN, MINI_APP_TERMS_ACCEPTED } from "@/lib/server/registration-defaults";
 import { createMiniAppDeviceId, readAppSession, writeAppSession } from "@/lib/session/app-session";
-import { attachTelegramToStudent } from "@/lib/magster/telegram-link";
+import { attachTelegramToStudent, requireTelegramSession } from "@/lib/magster/telegram-link";
 import { readInitDataFromRequest } from "@/lib/telegram/init-data";
+import { isTelegramBotConfigured } from "@/lib/env";
 import {
   hasErrors,
   validateProfile,
@@ -103,6 +104,35 @@ export async function POST(request: Request) {
     }
 
     let session = await readAppSession();
+    const initData = readInitDataFromRequest(request, form);
+
+    if (!isTelegramBotConfigured()) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "telegram_unconfigured",
+          message:
+            "The Mini App server is missing TELEGRAM_BOT_TOKEN. Add it and restart, then open Magster from Telegram again.",
+        },
+        { status: 503 },
+      );
+    }
+
+    const telegram = await requireTelegramSession(initData);
+    if (!telegram) {
+      console.warn("Checkout blocked: Telegram initData missing or invalid", {
+        initDataChars: initData.length,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "telegram_unverified",
+          message:
+            "Open Magster from the Telegram Mini App (not a normal browser) so your Telegram account can be linked.",
+        },
+        { status: 400 },
+      );
+    }
 
     // A previous checkout may have left a studentId in the session cookie.
     // Only reuse it when it actually corresponds to the submitted phone —
@@ -153,16 +183,12 @@ export async function POST(request: Request) {
       await writeAppSession(session);
     }
 
-    // Associate Telegram identity from cookie and/or HMAC-validated initData.
-    // Telegram WebView often omits cookies, so checkout must send initData.
-    try {
-      await attachTelegramToStudent(
-        studentId,
-        session.deviceId,
-        readInitDataFromRequest(request, form),
+    const linked = await attachTelegramToStudent(studentId, session.deviceId, initData);
+    if (!linked.ok) {
+      return NextResponse.json(
+        { ok: false, code: linked.code, message: linked.message },
+        { status: 400 },
       );
-    } catch (linkError) {
-      console.warn("Telegram link skipped (non-fatal):", linkError);
     }
 
     const bytes = Buffer.from(await receipt.arrayBuffer());

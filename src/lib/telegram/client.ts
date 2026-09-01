@@ -18,6 +18,20 @@ export function readTelegramWebAppInitData(): string {
   return fromQuery ?? "";
 }
 
+export async function waitForTelegramInitData(timeoutMs = 4000): Promise<string> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const data = readTelegramWebAppInitData();
+    if (data) return data;
+    await new Promise((resolve) => window.setTimeout(resolve, 120));
+  }
+  return readTelegramWebAppInitData();
+}
+
+export function encodeInitDataForTransport(initData: string): string {
+  return window.btoa(unescape(encodeURIComponent(initData)));
+}
+
 export async function establishTelegramSession(
   initData: string,
 ): Promise<{ identity: PublicTelegramIdentity | null; status: string; message: string }> {
@@ -28,7 +42,7 @@ export async function establishTelegramSession(
       "X-Telegram-Init-Data": initData,
     },
     credentials: "include",
-    body: JSON.stringify({ initData }),
+    body: JSON.stringify({ initData, initDataB64: encodeInitDataForTransport(initData) }),
   });
   const payload = (await response.json()) as {
     identity?: PublicTelegramIdentity | null;

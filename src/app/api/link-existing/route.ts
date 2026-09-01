@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { linkTelegramToExistingStudent } from "@/lib/magster/telegram-link";
 import { readAppSession, writeAppSession } from "@/lib/session/app-session";
-import { readInitDataFromRequest } from "@/lib/telegram/init-data";
+import { readInitDataFromJson, readInitDataFromRequest } from "@/lib/telegram/init-data";
 import { validateLocalPhone } from "@/lib/validation/registration";
 
 export const runtime = "nodejs";
@@ -11,14 +11,12 @@ const PIN_PATTERN = /^\d{4}$/;
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as
-      | { phone?: unknown; pin?: unknown; initData?: unknown }
+      | { phone?: unknown; pin?: unknown; initData?: unknown; initDataB64?: unknown }
       | null;
 
     const phone = String(body?.phone ?? "").trim();
     const pin = String(body?.pin ?? "").trim();
-    const initData =
-      (typeof body?.initData === "string" ? body.initData : "") ||
-      readInitDataFromRequest(request);
+    const initData = readInitDataFromJson(body) || readInitDataFromRequest(request);
 
     const formatError = validateLocalPhone(phone);
     if (formatError || !PIN_PATTERN.test(pin)) {

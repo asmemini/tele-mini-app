@@ -40,7 +40,14 @@ async function resolveVerifiedTelegramSession(
           env.telegramAuthMaxAgeSeconds,
         );
         const session = createTelegramSession(validated.user);
-        await writeTelegramSession(session);
+        try {
+          await writeTelegramSession(session);
+        } catch (cookieError) {
+          console.warn(
+            "Telegram session cookie was not stored:",
+            cookieError instanceof Error ? cookieError.message : cookieError,
+          );
+        }
         return session;
       } catch (error) {
         const code = error instanceof TelegramInitDataError ? error.code : "invalid";
@@ -53,6 +60,10 @@ async function resolveVerifiedTelegramSession(
 }
 
 export async function syncTelegramSessionFromInitData(initData?: string | null) {
+  return resolveVerifiedTelegramSession(initData);
+}
+
+export async function requireTelegramSession(initData?: string | null) {
   return resolveVerifiedTelegramSession(initData);
 }
 
@@ -71,8 +82,12 @@ export async function attachTelegramToStudent(
 ): Promise<AttachTelegramLinkResult> {
   const session = await resolveVerifiedTelegramSession(initData);
   if (!session) {
-    console.warn("Telegram identity not linked: no verified Mini App initData for student", studentId);
-    return { ok: true };
+    return {
+      ok: false,
+      code: "telegram_unverified",
+      message:
+        "Open Magster from the Telegram Mini App so your Telegram account can be linked before payment.",
+    };
   }
 
   const { data, error } = await getMagsterSupabase().rpc(
