@@ -9,9 +9,10 @@ type PhoneFieldProps = {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  notice?: string;
 };
 
-export function PhoneField({ id, value, onChange, error }: PhoneFieldProps) {
+export function PhoneField({ id, value, onChange, error, notice }: PhoneFieldProps) {
   const errorId = error ? `${id}-error` : undefined;
   const noticeId = `${id}-telegram-notice`;
   return (
@@ -50,9 +51,9 @@ export function PhoneField({ id, value, onChange, error }: PhoneFieldProps) {
         role="note"
         className="mt-2 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] font-medium leading-5 text-ink"
       >
-        Enter the phone number on the Telegram account you are using right now. Your private
-        channel invite is sent to this Telegram account only, so this number must match your
-        active Telegram number exactly.
+        {notice?.trim()
+          ? notice.trim()
+          : "Enter the phone number on the Telegram account you are using right now. Your private channel invite is sent to this Telegram account only, so this number must match your active Telegram number exactly."}
       </p>
       <FieldError id={errorId} message={error} />
     </div>

@@ -26,6 +26,7 @@ export type MiniAppConfig = {
   visibleCourseIds: "all" | number[];
   visibleBundleIds: "all" | number[];
   paymentInstructions: string;
+  phoneNotice: string;
   banners: Array<{
     id: string;
     imageUrl: string;
@@ -50,6 +51,8 @@ export const DEFAULT_MINI_APP_CONFIG: MiniAppConfig = {
   visibleCourseIds: "all",
   visibleBundleIds: "all",
   paymentInstructions: "",
+  phoneNotice:
+    "Enter the phone number on the Telegram account you are using right now. Your private channel invite is sent to this Telegram account only, so this number must match your active Telegram number exactly.",
   banners: [],
 };
 
@@ -58,6 +61,7 @@ export function composeMiniAppConfig(settings: MagsterPublicSettings): MiniAppCo
     ...DEFAULT_MINI_APP_CONFIG,
     welcomeSubtitle: settings.slogan || DEFAULT_MINI_APP_CONFIG.welcomeSubtitle,
     welcomeImageUrl: settings.logoUrl,
+    phoneNotice: settings.phoneNotice || DEFAULT_MINI_APP_CONFIG.phoneNotice,
   };
 }
 

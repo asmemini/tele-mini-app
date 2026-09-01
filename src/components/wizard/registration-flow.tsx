@@ -660,6 +660,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                 setProfileErrors((current) => ({ ...current, phone: undefined }));
               }}
               error={profileErrors.phone}
+              notice={initial.config?.phoneNotice}
             />
             {phoneTaken ? (
               <div className="rounded-card border border-brand/30 bg-brand/5 p-3">

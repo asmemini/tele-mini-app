@@ -1,26 +1,21 @@
+import { buildPaymentApprovedInviteMessage } from "@/lib/telegram/approval-message";
 import {
   createSingleUseChannelInvite,
-  sendTelegramDirectMessage,
+  sendAndPinTelegramDirectMessage,
 } from "@/lib/telegram/bot-api";
 import { MagsterTables } from "@/lib/magster/tables";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 
-function inviteMessage(studentName: string, inviteLink: string) {
-  const name = studentName.trim() || "there";
-  return [
-    `Hi ${name}, your Magster payment was approved.`,
-    "Here is your one-time private channel invite:",
-    inviteLink,
-    "This link works for a single join. Open it in Telegram to get access.",
-  ].join("\n\n");
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 }
 
 export async function sendChannelInvitesForApprovedPayments(studentId: number): Promise<void> {
   const env = getServerEnv();
   const botToken = env.telegramBotToken;
-  const channelId = env.telegramChannelId;
-  if (!botToken || !channelId || !studentId) return;
+  if (!botToken || !studentId) return;
 
   const client = getMagsterSupabase();
   const { data: student, error: studentError } = await client
@@ -41,7 +36,7 @@ export async function sendChannelInvitesForApprovedPayments(studentId: number): 
 
   const { data: payments, error: paymentError } = await client
     .from(MagsterTables.paymentRequests)
-    .select("id")
+    .select("id, course_id, bundle_id, courses(title, telegram_channel_id), bundles(title, telegram_channel_id)")
     .eq("student_id", studentId)
     .eq("status", "approved");
 
@@ -53,18 +48,42 @@ export async function sendChannelInvitesForApprovedPayments(studentId: number): 
   const fullName = String((student as { full_name?: unknown } | null)?.full_name ?? "");
 
   for (const row of payments ?? []) {
-    const paymentId = Number((row as { id?: unknown }).id);
+    const payment = row as {
+      id?: unknown;
+      course_id?: number | null;
+      bundle_id?: number | null;
+      courses?: { title?: string; telegram_channel_id?: string | null } | { title?: string; telegram_channel_id?: string | null }[] | null;
+      bundles?: { title?: string; telegram_channel_id?: string | null } | { title?: string; telegram_channel_id?: string | null }[] | null;
+    };
+    const paymentId = Number(payment.id);
     if (!Number.isFinite(paymentId) || paymentId <= 0) continue;
+
+    const bundle = firstRelation(payment.bundles);
+    const course = firstRelation(payment.courses);
+    const isBundle = Boolean(payment.bundle_id);
+    const itemTitle = isBundle
+      ? String(bundle?.title ?? "Bundle")
+      : String(course?.title ?? "Course");
+    const channelId =
+      String((isBundle ? bundle?.telegram_channel_id : course?.telegram_channel_id) ?? "").trim() ||
+      env.telegramChannelId;
+    if (!channelId) continue;
+
     try {
       const inviteLink = await createSingleUseChannelInvite({
         botToken,
         channelId,
         label: `pay ${paymentId}`,
       });
-      await sendTelegramDirectMessage({
+      await sendAndPinTelegramDirectMessage({
         botToken,
         telegramUserId,
-        text: inviteMessage(fullName, inviteLink),
+        text: buildPaymentApprovedInviteMessage({
+          studentName: fullName,
+          itemTitle,
+          inviteLink,
+          kind: isBundle ? "bundle" : "course",
+        }),
       });
       await client.from("telegram_channel_invites").insert({
         payment_request_id: paymentId,
@@ -72,6 +91,9 @@ export async function sendChannelInvitesForApprovedPayments(studentId: number): 
         telegram_user_id: telegramUserId,
         invite_link: inviteLink,
         status: "sent",
+        course_id: payment.course_id ?? null,
+        bundle_id: payment.bundle_id ?? null,
+        channel_id: channelId,
       });
     } catch (error) {
       console.warn(

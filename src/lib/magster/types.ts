@@ -34,6 +34,7 @@ export type MagsterPublicSettings = {
   slogan: string;
   logoUrl: string | null;
   contactTelegram: string;
+  phoneNotice: string;
 };
 
 export type MagsterStudentIdentity = {

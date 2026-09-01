@@ -53,10 +53,43 @@ export async function sendTelegramDirectMessage(input: {
   botToken: string;
   telegramUserId: number;
   text: string;
-}): Promise<void> {
-  await telegramPost(input.botToken, "sendMessage", {
+}): Promise<{ messageId: number }> {
+  const result = await telegramPost<{ message_id: number }>(input.botToken, "sendMessage", {
     chat_id: input.telegramUserId,
     text: input.text,
-    disable_web_page_preview: false,
+    disable_web_page_preview: true,
   });
+  return { messageId: result.message_id };
+}
+
+export async function pinTelegramChatMessage(input: {
+  botToken: string;
+  telegramUserId: number;
+  messageId: number;
+}): Promise<void> {
+  await telegramPost<boolean>(input.botToken, "pinChatMessage", {
+    chat_id: input.telegramUserId,
+    message_id: input.messageId,
+    disable_notification: false,
+  });
+}
+
+export async function sendAndPinTelegramDirectMessage(input: {
+  botToken: string;
+  telegramUserId: number;
+  text: string;
+}): Promise<void> {
+  const { messageId } = await sendTelegramDirectMessage(input);
+  try {
+    await pinTelegramChatMessage({
+      botToken: input.botToken,
+      telegramUserId: input.telegramUserId,
+      messageId,
+    });
+  } catch (error) {
+    console.warn(
+      "Telegram pin after invite failed:",
+      error instanceof Error ? error.message : error,
+    );
+  }
 }

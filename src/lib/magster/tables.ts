@@ -31,6 +31,7 @@ export const MagsterRpc = {
   attachStudentTelegram: "attach_student_telegram",
   linkStudentTelegramByPin: "link_student_telegram_by_pin",
   miniAppSessionByTelegram: "mini_app_session_by_telegram",
+  getMiniAppPhoneNotice: "get_mini_app_phone_notice",
 } as const;
 
 export const MagsterStorage = {
