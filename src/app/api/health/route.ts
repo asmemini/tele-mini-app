@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isTelegramBotConfigured } from "@/lib/env";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 import { MagsterTables } from "@/lib/magster/tables";
 
@@ -13,6 +14,7 @@ export async function GET() {
       ok: true,
       project: "mrzmhtirmxqnnoqppnyf",
       source: "existing Magster Supabase project",
+      telegramBotConfigured: isTelegramBotConfigured(),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

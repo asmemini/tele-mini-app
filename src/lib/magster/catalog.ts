@@ -22,6 +22,20 @@ function availabilityFrom(
   return "standard";
 }
 
+function compareStudentAppCatalog<T extends { homeOrder: number | null; createdAt: string; title: string }>(
+  a: T,
+  b: T,
+  tieBreaker: "createdAtDesc" | "titleAsc",
+) {
+  const aOrder = a.homeOrder;
+  const bOrder = b.homeOrder;
+  if (aOrder != null && bOrder != null && aOrder !== bOrder) return aOrder - bOrder;
+  if (aOrder != null && bOrder == null) return -1;
+  if (aOrder == null && bOrder != null) return 1;
+  if (tieBreaker === "titleAsc") return a.title.localeCompare(b.title);
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
 export async function loadMagsterCatalog(): Promise<MagsterCatalog> {
   const client = getMagsterSupabase();
   const [courseResult, bundleResult] = await Promise.all([
@@ -63,8 +77,12 @@ export async function loadMagsterCatalog(): Promise<MagsterCatalog> {
       ),
       totalChapters: asNumber(row.total_chapters),
       totalLessons: asNumber(row.total_lessons),
+      homeOrder: row.home_order == null ? null : asNumber(row.home_order),
+      createdAt: asString(row.created_at),
     }))
-    .filter((course) => course.availability !== "hidden");
+    .filter((course) => course.availability !== "hidden")
+    .sort((a, b) => compareStudentAppCatalog(a, b, "createdAtDesc"))
+    .map(({ homeOrder: _homeOrder, createdAt: _createdAt, ...course }) => course);
 
   const bundles: MagsterBundle[] = bundleRows
     .map((row) => ({
@@ -78,8 +96,12 @@ export async function loadMagsterCatalog(): Promise<MagsterCatalog> {
       availability: availabilityFrom(row.availability, false, row.is_hidden === true),
       includedCourseIds: [] as number[],
       includedCourseTitles: [] as string[],
+      homeOrder: row.home_order == null ? null : asNumber(row.home_order),
+      createdAt: asString(row.created_at),
     }))
-    .filter((bundle) => bundle.availability !== "hidden");
+    .filter((bundle) => bundle.availability !== "hidden")
+    .sort((a, b) => compareStudentAppCatalog(a, b, "titleAsc"))
+    .map(({ homeOrder: _homeOrder, createdAt: _createdAt, ...bundle }) => bundle);
 
   const bundleIds = bundles.map((bundle) => bundle.id);
   if (bundleIds.length) {

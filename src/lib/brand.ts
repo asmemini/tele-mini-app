@@ -6,6 +6,7 @@ export const APP_DESCRIPTION =
 export const MAGSTER_COLORS = {
   primary: "#2563EB",
   primaryDark: "#1D4ED8",
+  header: "#0A0A0A",
   background: "#F8FAFC",
   surface: "#FFFFFF",
   text: "#0F172A",

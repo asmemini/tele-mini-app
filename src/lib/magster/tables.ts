@@ -30,6 +30,7 @@ export const MagsterRpc = {
   adminApprovePaymentRequest: "admin_approve_payment_request",
   attachStudentTelegram: "attach_student_telegram",
   linkStudentTelegramByPin: "link_student_telegram_by_pin",
+  miniAppSessionByTelegram: "mini_app_session_by_telegram",
 } as const;
 
 export const MagsterStorage = {

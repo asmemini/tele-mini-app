@@ -15,20 +15,20 @@ export function PhoneField({ id, value, onChange, error }: PhoneFieldProps) {
   const errorId = error ? `${id}-error` : undefined;
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-semibold text-ink">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <label htmlFor={id} className="text-[11px] font-semibold tracking-wide text-muted">
           Phone Number
         </label>
-        <span className="text-xs font-semibold tabular-nums text-muted">
+        <span className="text-[11px] font-medium tabular-nums text-hint">
           {value.length}/{LOCAL_PHONE_LENGTH}
         </span>
       </div>
       <div
-        className={`flex h-14 items-stretch overflow-hidden rounded-card border bg-surface ${
+        className={`flex h-11 items-stretch overflow-hidden rounded-card border bg-surface ${
           error ? "border-danger" : "border-line focus-within:border-brand"
         }`}
       >
-        <span className="flex items-center border-r border-line bg-canvas px-3 text-base font-semibold text-ink">
+        <span className="flex items-center border-r border-line bg-canvas px-2.5 text-[13px] font-semibold text-ink">
           {ETHIOPIAN_COUNTRY_CODE}
         </span>
         <input

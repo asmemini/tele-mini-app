@@ -6,6 +6,7 @@ import { useTelegramIdentity } from "@/components/telegram/telegram-provider";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import type { MiniAppConfig } from "@/lib/config/mini-app-config";
 import type { MagsterCatalog } from "@/lib/magster/types";
+import type { MiniAppResumePayload } from "@/lib/bootstrap/types";
 import { readTelegramWebAppInitData } from "@/lib/telegram/client";
 
 type BootstrapResponse = {
@@ -13,6 +14,7 @@ type BootstrapResponse = {
   message?: string;
   config?: MiniAppConfig;
   catalog?: MagsterCatalog;
+  resume?: MiniAppResumePayload | null;
 };
 
 export function WelcomeScreen() {
@@ -21,6 +23,7 @@ export function WelcomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<MiniAppConfig | null>(null);
   const [catalog, setCatalog] = useState<MagsterCatalog | null>(null);
+  const [resume, setResume] = useState<MiniAppResumePayload | null>(null);
 
   useEffect(() => {
     if (telegram.state === "loading" || telegram.state === "validating") return;
@@ -44,6 +47,7 @@ export function WelcomeScreen() {
         if (cancelled) return;
         setConfig(payload.config ?? null);
         setCatalog(payload.catalog ?? null);
+        setResume(payload.resume ?? null);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -60,10 +64,12 @@ export function WelcomeScreen() {
   const title = config?.welcomeTitle ?? "Welcome to Registration";
 
   return (
-    <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,calc(env(safe-area-inset-top)+0.5rem))]">
-      <header className="shrink-0 px-5">
-        <p className="text-center text-[20px] font-bold tracking-[-0.03em] text-ink">Magster</p>
-        <h1 className="mt-3 text-center text-[18px] font-bold leading-snug tracking-[-0.02em] text-ink">
+    <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <header className="shrink-0 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-white">
+        <p className="text-center text-[15px] font-semibold tracking-tight">Magster</p>
+      </header>
+      <div className="px-5 pt-3">
+        <h1 className="text-center text-[16px] font-semibold leading-snug tracking-tight text-ink">
           {title}
         </h1>
         {telegram.identity?.firstName ? (
@@ -72,7 +78,7 @@ export function WelcomeScreen() {
         <p className="mt-2 text-center text-[13px] leading-5 text-muted">
           {config?.welcomeSubtitle ?? "Premium university courses and bundles, now inside Telegram."}
         </p>
-      </header>
+      </div>
 
       <div className="mt-2 min-h-0 flex-1">
         {error ? (
@@ -90,7 +96,9 @@ export function WelcomeScreen() {
 
       <div className="shrink-0 bg-canvas px-5 pt-4">
         <PrimaryButton href="/register">
-          {config?.primaryCtaLabel ?? "Register Now"}
+          {resume?.profileComplete
+            ? "Continue"
+            : (config?.primaryCtaLabel ?? "Register Now")}
         </PrimaryButton>
         <p className="mt-3 text-center text-[11px] leading-5 text-hint">
           Access is granted after Magster Admin verifies your payment.

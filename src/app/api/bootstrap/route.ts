@@ -5,11 +5,13 @@ import { emptyTelegramStudentLink } from "@/lib/magster/identity";
 import { loadActivePaymentMethods } from "@/lib/magster/payment-methods";
 import { loadRegistrationCatalog } from "@/lib/magster/registration";
 import { loadMagsterPublicSettings } from "@/lib/magster/settings";
+import { loadMiniAppResumeByTelegram } from "@/lib/magster/resume";
 import { attachTelegramToStudent, syncTelegramSessionFromInitData } from "@/lib/magster/telegram-link";
 import { isTelegramBotConfigured } from "@/lib/env";
-import { readAppSession } from "@/lib/session/app-session";
+import { readAppSession, writeAppSession } from "@/lib/session/app-session";
 import { readInitDataFromJson, readInitDataFromRequest } from "@/lib/telegram/init-data";
 import { readTelegramSession, toPublicIdentity } from "@/lib/telegram/session";
+import type { MiniAppResumePayload } from "@/lib/bootstrap/types";
 
 export async function GET() {
   return handleBootstrap();
@@ -34,16 +36,44 @@ async function handleBootstrap(initData?: string) {
     ]);
 
     const app = await readAppSession();
-    await syncTelegramSessionFromInitData(initData);
-    if (app.studentId) {
+    const telegram = (await syncTelegramSessionFromInitData(initData)) ?? cookieSession;
+    const resumeRow = telegram
+      ? await loadMiniAppResumeByTelegram(telegram.telegramUserId)
+      : null;
+
+    if (resumeRow) {
+      const now = Math.floor(Date.now() / 1000);
+      await writeAppSession({
+        ...app,
+        studentId: resumeRow.studentId,
+        iat: now,
+        exp: now + 60 * 60 * 24 * 7,
+      });
+    }
+
+    const attachStudentId = resumeRow?.studentId ?? app.studentId;
+    if (attachStudentId) {
       try {
-        await attachTelegramToStudent(app.studentId, app.deviceId, initData);
+        await attachTelegramToStudent(attachStudentId, app.deviceId, initData);
       } catch (linkError) {
         console.warn("Telegram attach on bootstrap skipped:", linkError);
       }
     }
 
-    const session = (await readTelegramSession()) ?? cookieSession;
+    const session = (await readTelegramSession()) ?? telegram;
+    const resume: MiniAppResumePayload | null = resumeRow
+      ? {
+          studentId: resumeRow.studentId,
+          profileComplete: resumeRow.profileComplete,
+          fullName: resumeRow.fullName,
+          phone: resumeRow.phone,
+          gender: resumeRow.gender,
+          academicYear: resumeRow.academicYear,
+          institution: resumeRow.institution,
+          ownedCourseIds: resumeRow.ownedCourseIds,
+          ownedBundleIds: resumeRow.ownedBundleIds,
+        }
+      : null;
     const config = composeMiniAppConfig(settings);
 
     return NextResponse.json({
@@ -63,6 +93,7 @@ async function handleBootstrap(initData?: string) {
       },
       paymentMethods,
       registration,
+      resume,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { GENDERS, MAX_RECEIPT_BYTES } from "@/lib/constants/auth";
+import { loadMagsterCatalog } from "@/lib/magster/catalog";
 import { loadPurchasablePrices } from "@/lib/magster/catalog-prices";
 import { submitMagsterPaymentRequest } from "@/lib/magster/checkout";
+import { expandOwnedCatalogIds } from "@/lib/magster/entitlements";
+import { loadMiniAppResumeByTelegram } from "@/lib/magster/resume";
 import { loadActivePaymentMethods } from "@/lib/magster/payment-methods";
 import { uploadPaymentReceipt } from "@/lib/magster/receipts";
 import {
@@ -73,9 +76,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Please select a valid institution." }, { status: 400 });
     }
 
-    const courseIds = parseIdList(form.get("courseIds"));
-    const bundleIds = parseIdList(form.get("bundleIds"));
-    const prices = await loadPurchasablePrices({ courseIds, bundleIds });
+    const requestedCourseIds = parseIdList(form.get("courseIds"));
+    const requestedBundleIds = parseIdList(form.get("bundleIds"));
 
     const paymentSlug = String(form.get("paymentMethod") ?? "").trim();
     const methods = await loadActivePaymentMethods();
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
     }
 
     const telegram = await requireTelegramSession(initData);
+    const resume = telegram ? await loadMiniAppResumeByTelegram(telegram.telegramUserId) : null;
     if (!telegram) {
       console.warn("Checkout blocked: Telegram initData missing or invalid", {
         initDataChars: initData.length,
@@ -134,14 +137,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // A previous checkout may have left a studentId in the session cookie.
-    // Only reuse it when it actually corresponds to the submitted phone —
-    // otherwise treat this as a brand-new registration. Reusing a stale id
-    // would silently re-purchase onto another student's account and hide
-    // new registrations from the admin panel.
+    const productCatalog = await loadMagsterCatalog();
+    const owned = expandOwnedCatalogIds({
+      courses: productCatalog.courses,
+      bundles: productCatalog.bundles,
+      ownedCourseIds: resume?.ownedCourseIds ?? [],
+      ownedBundleIds: resume?.ownedBundleIds ?? [],
+    });
+    const courseIds = requestedCourseIds.filter((id) => !owned.courseIds.has(id));
+    const bundleIds = requestedBundleIds.filter((id) => !owned.bundleIds.has(id));
+    if (!courseIds.length && !bundleIds.length) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "already_purchased",
+          message:
+            "Those items are already on your Magster account. Choose a course or bundle you have not purchased yet.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const prices = await loadPurchasablePrices({ courseIds, bundleIds });
+
+    // Telegram identity is the source of truth in Mini App (cookies often drop).
+    // Cookie studentId is only reused when it matches this Telegram student or phone.
     const phoneStudentId = await findMagsterStudentIdByPhone(profile.phone);
-    const reuseStudent = session.studentId != null && phoneStudentId === session.studentId;
-    let studentId = reuseStudent ? session.studentId : null;
+    const reuseStudent =
+      resume?.studentId != null
+        ? resume.studentId
+        : session.studentId != null && phoneStudentId === session.studentId
+          ? session.studentId
+          : null;
+    let studentId = reuseStudent;
 
     if (!studentId) {
       const phoneTaken = await isPhoneTakenForNewRegistration(profile.phone, null);
@@ -179,6 +207,15 @@ export async function POST(request: Request) {
         studentId,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
+      };
+      await writeAppSession(session);
+    } else {
+      const now = Math.floor(Date.now() / 1000);
+      session = {
+        ...session,
+        studentId,
+        iat: now,
+        exp: now + 60 * 60 * 24 * 7,
       };
       await writeAppSession(session);
     }

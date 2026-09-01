@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BrandMark } from "@/components/brand/brand-mark";
 import { useTelegramIdentity } from "@/components/telegram/telegram-provider";
 import { OptionPicker } from "@/components/ui/option-picker";
 import { PhoneField } from "@/components/ui/phone-field";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { TextField } from "@/components/ui/text-field";
-import { WizardProgress } from "@/components/wizard/wizard-progress";
+import { WizardHeader } from "@/components/wizard/wizard-progress";
 import type { BootstrapPayload } from "@/lib/bootstrap/types";
 import { GENDERS, MAX_RECEIPT_BYTES } from "@/lib/constants/auth";
 import { formatEtb } from "@/lib/format/etb";
@@ -19,6 +18,7 @@ import {
   isPurchasableCourse,
   selectionTotal,
 } from "@/lib/catalog/selection";
+import { expandOwnedCatalogIds } from "@/lib/magster/entitlements";
 import type { MagsterBundle, MagsterCourse } from "@/lib/magster/types";
 import { closeTelegramMiniApp } from "@/lib/telegram/close";
 import {
@@ -65,15 +65,31 @@ function SelectionDot({ selected }: { selected: boolean }) {
   );
 }
 
+function catalogLockLabel(owned: boolean, purchasable: boolean): string | null {
+  if (owned) return "Already Purchased";
+  if (!purchasable) return "Coming soon";
+  return null;
+}
+
+function CatalogLockBadge({ label }: { label: string }) {
+  return (
+    <span className="mt-1.5 inline-flex rounded-full bg-header/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
+      {label}
+    </span>
+  );
+}
+
 function CourseSelectCard({
   course,
   selected,
   disabled,
+  lockLabel,
   onToggle,
 }: {
   course: MagsterCourse;
   selected: boolean;
   disabled?: boolean;
+  lockLabel?: string | null;
   onToggle: () => void;
 }) {
   return (
@@ -82,12 +98,12 @@ function CourseSelectCard({
       onClick={disabled ? undefined : onToggle}
       aria-pressed={selected}
       disabled={disabled}
-      className={`w-full rounded-card border p-3 text-left shadow-soft transition-colors touch-manipulation ${
-        selected ? "border-brand bg-brand/5" : "border-line bg-surface"
+      className={`w-full rounded-card border px-2.5 py-2 text-left touch-manipulation ${
+        selected ? "border-header bg-header/5" : "border-line bg-surface"
       } ${disabled ? "opacity-60" : ""}`}
     >
-      <div className="flex gap-3">
-        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brand-soft/50">
+      <div className="flex items-center gap-2.5">
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-brand-soft">
           {course.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={course.thumbnailUrl} alt="" className="h-full w-full object-cover" />
@@ -95,20 +111,13 @@ function CourseSelectCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-sm font-semibold text-ink">{course.title}</h3>
-            <SelectionDot selected={selected} />
+            <h3 className="line-clamp-1 text-[13px] font-semibold leading-4 text-ink">{course.title}</h3>
+            {disabled ? null : <SelectionDot selected={selected} />}
           </div>
-          {course.description ? (
-            <p className="mt-1 line-clamp-2 text-xs text-muted">{course.description}</p>
-          ) : null}
-          <p className="mt-2 text-sm font-bold text-brand">{formatEtb(course.price)}</p>
+          <p className="mt-0.5 text-[12px] font-semibold text-brand">{formatEtb(course.price)}</p>
+          {lockLabel ? <CatalogLockBadge label={lockLabel} /> : null}
         </div>
       </div>
-      {disabled ? (
-        <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-hint">
-          Coming soon
-        </p>
-      ) : null}
     </button>
   );
 }
@@ -131,20 +140,22 @@ function BundleSelectCard({
   bundle,
   selected,
   disabled,
+  lockLabel,
   onToggle,
   onPreview,
 }: {
   bundle: MagsterBundle;
   selected: boolean;
   disabled?: boolean;
+  lockLabel?: string | null;
   onToggle: () => void;
   onPreview: () => void;
 }) {
   const original = bundleOriginalTotal(bundle);
   return (
     <div
-      className={`flex w-full items-stretch overflow-hidden rounded-card border shadow-soft ${
-        selected ? "border-brand bg-brand/5" : "border-line bg-surface"
+      className={`flex w-full items-stretch overflow-hidden rounded-card border ${
+        selected ? "border-header bg-header/5" : "border-line bg-surface"
       } ${disabled ? "opacity-60" : ""}`}
     >
       <button
@@ -152,30 +163,27 @@ function BundleSelectCard({
         onClick={disabled ? undefined : onToggle}
         aria-pressed={selected}
         disabled={disabled}
-        className="min-w-0 flex-1 p-3 text-left touch-manipulation"
+        className="min-w-0 flex-1 px-2.5 py-2 text-left touch-manipulation"
       >
-        <div className="flex gap-3">
+        <div className="flex items-center gap-2.5">
           {bundle.thumbnailUrl ? (
-            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brand-soft/50">
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-brand-soft">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={bundle.thumbnailUrl} alt="" className="h-full w-full object-cover" />
             </div>
           ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand">Bundle</p>
-              <SelectionDot selected={selected} />
+              <h3 className="line-clamp-1 text-[13px] font-semibold leading-4 text-ink">{bundle.title}</h3>
+              {disabled ? null : <SelectionDot selected={selected} />}
             </div>
-            <h3 className="mt-1 text-sm font-semibold text-ink">{bundle.title}</h3>
-            <p className="mt-1 line-clamp-2 text-xs text-muted">
-              {bundle.includedCourseTitles.slice(0, 3).join(" · ") || bundle.description}
-            </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <p className="text-sm font-bold text-brand">{formatEtb(bundle.price)}</p>
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-[12px] font-semibold text-brand">{formatEtb(bundle.price)}</p>
               {original > bundle.price ? (
-                <p className="text-xs text-hint line-through">{formatEtb(original)}</p>
+                <p className="text-[11px] text-hint line-through">{formatEtb(original)}</p>
               ) : null}
             </div>
+            {lockLabel ? <CatalogLockBadge label={lockLabel} /> : null}
           </div>
         </div>
       </button>
@@ -183,7 +191,7 @@ function BundleSelectCard({
         type="button"
         aria-label={`View courses in ${bundle.title}`}
         onClick={onPreview}
-        className="flex w-12 shrink-0 items-center justify-center border-l border-line text-brand touch-manipulation"
+        className="flex w-9 shrink-0 items-center justify-center border-l border-line text-ink/70 touch-manipulation"
       >
         <EyeIcon />
       </button>
@@ -216,13 +224,18 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   const [termsAccepted] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
   const [success, setSuccess] = useState(false);
   const [legalSlug, setLegalSlug] = useState<"terms_of_service" | "privacy_policy" | null>(null);
   const [legalTitle, setLegalTitle] = useState("");
   const [legalBody, setLegalBody] = useState("");
   const [legalLoading, setLegalLoading] = useState(false);
   const [previewBundle, setPreviewBundle] = useState<MagsterBundle | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [existingStudentId, setExistingStudentId] = useState<number | null>(null);
+  const [ownedCourseIds, setOwnedCourseIds] = useState<number[]>([]);
+  const [ownedBundleIds, setOwnedBundleIds] = useState<number[]>([]);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkPin, setLinkPin] = useState("");
   const [linkPinError, setLinkPinError] = useState<string | null>(null);
@@ -237,16 +250,107 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   const academicYears = initial.registration?.academicYears.map((item) => item.name) ?? [];
   const institutions = initial.registration?.institutions.map((item) => item.name) ?? [];
   const selectedMethod = methods.find((method) => method.slug === paymentSlug) ?? null;
-  const total = selectionTotal(courses, bundles, courseIds, bundleIds);
-  const selectedCount = courseIds.length + bundleIds.length;
+  const owned = useMemo(
+    () =>
+      expandOwnedCatalogIds({
+        courses,
+        bundles,
+        ownedCourseIds,
+        ownedBundleIds,
+      }),
+    [courses, bundles, ownedCourseIds, ownedBundleIds],
+  );
+  const purchasableCourseIds = useMemo(
+    () => courseIds.filter((id) => !owned.courseIds.has(id)),
+    [courseIds, owned.courseIds],
+  );
+  const purchasableBundleIds = useMemo(
+    () => bundleIds.filter((id) => !owned.bundleIds.has(id)),
+    [bundleIds, owned.bundleIds],
+  );
+  const total = selectionTotal(courses, bundles, purchasableCourseIds, purchasableBundleIds);
+  const selectedCount = purchasableCourseIds.length + purchasableBundleIds.length;
 
   const selectedLabels = useMemo(() => {
     const names = [
-      ...bundles.filter((bundle) => bundleIds.includes(bundle.id)).map((bundle) => bundle.title),
-      ...courses.filter((course) => courseIds.includes(course.id)).map((course) => course.title),
+      ...bundles.filter((bundle) => purchasableBundleIds.includes(bundle.id)).map((bundle) => bundle.title),
+      ...courses.filter((course) => purchasableCourseIds.includes(course.id)).map((course) => course.title),
     ];
     return names;
-  }, [bundles, courses, bundleIds, courseIds]);
+  }, [bundles, courses, purchasableBundleIds, purchasableCourseIds]);
+
+  const filteredBundles = useMemo(() => {
+    const needle = catalogQuery.trim().toLowerCase();
+    if (!needle) return bundles;
+    return bundles.filter(
+      (bundle) =>
+        bundle.title.toLowerCase().includes(needle) ||
+        bundle.includedCourseTitles.some((title) => title.toLowerCase().includes(needle)),
+    );
+  }, [bundles, catalogQuery]);
+
+  const filteredCourses = useMemo(() => {
+    const needle = catalogQuery.trim().toLowerCase();
+    if (!needle) return courses;
+    return courses.filter(
+      (course) =>
+        course.title.toLowerCase().includes(needle) ||
+        course.description.toLowerCase().includes(needle),
+    );
+  }, [courses, catalogQuery]);
+
+  useEffect(() => {
+    if (telegram.state === "loading") return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const initData = (await waitForTelegramInitData()) || readTelegramWebAppInitData();
+        const response = await fetch("/api/bootstrap", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Telegram-Init-Data": initData,
+          },
+          body: JSON.stringify({
+            initData,
+            initDataB64: encodeInitDataForTransport(initData),
+          }),
+        });
+        const payload = (await response.json()) as BootstrapPayload;
+        if (cancelled || !response.ok || !payload.ok || !payload.resume) return;
+        const resume = payload.resume;
+        setExistingStudentId(resume.studentId);
+        setOwnedCourseIds(resume.ownedCourseIds);
+        setOwnedBundleIds(resume.ownedBundleIds);
+        setProfile({
+          fullName: resume.fullName,
+          phone: resume.phone.replace(/\D/g, "").slice(-9),
+          gender: resume.gender,
+          academicYear: resume.academicYear,
+          institution: resume.institution,
+        });
+        setCourseIds((current) => current.filter((id) => !resume.ownedCourseIds.includes(id)));
+        setBundleIds((current) => current.filter((id) => !resume.ownedBundleIds.includes(id)));
+        if (resume.profileComplete) setStep(2);
+      } catch {
+        // New visitors stay on profile creation.
+      } finally {
+        if (!cancelled) setSessionReady(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [telegram.state]);
+
+  async function copyValue(field: string, value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    window.setTimeout(() => setCopiedField(null), 1500);
+  }
 
   async function checkPhoneTaken(phone: string): Promise<"taken" | "available" | "error"> {
     const seq = ++phoneCheckSeq.current;
@@ -254,8 +358,14 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       const response = await fetch("/api/phone-availability", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": readTelegramWebAppInitData(),
+        },
+        body: JSON.stringify({
+          phone,
+          initData: readTelegramWebAppInitData(),
+        }),
       });
       const payload = (await response.json()) as { ok?: boolean; taken?: boolean };
       if (seq !== phoneCheckSeq.current) return "available";
@@ -315,6 +425,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   }
 
   useEffect(() => {
+    if (existingStudentId) return;
     if (validateLocalPhone(profile.phone)) return;
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -325,12 +436,16 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       })();
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [profile.phone]);
+  }, [profile.phone, existingStudentId]);
 
   async function goNextFromProfile() {
     const errors = validateProfile(profile);
     setProfileErrors(errors);
     if (hasErrors(errors)) return;
+    if (existingStudentId) {
+      setStep(2);
+      return;
+    }
     setCheckingPhone(true);
     try {
       const result = await checkPhoneTaken(profile.phone);
@@ -349,8 +464,12 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   }
 
   function goNextFromCatalog() {
-    if (!courseIds.length && !bundleIds.length) {
-      setSelectionError(validationMessages.selection);
+    if (!purchasableCourseIds.length && !purchasableBundleIds.length) {
+      setSelectionError(
+        owned.courseIds.size || owned.bundleIds.size
+          ? "Choose a course or bundle you have not already purchased."
+          : validationMessages.selection,
+      );
       return;
     }
     setSelectionError(null);
@@ -430,8 +549,8 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       form.set("gender", profile.gender);
       form.set("academicYear", profile.academicYear);
       form.set("institution", profile.institution);
-      form.set("courseIds", JSON.stringify(courseIds));
-      form.set("bundleIds", JSON.stringify(bundleIds));
+      form.set("courseIds", JSON.stringify(purchasableCourseIds));
+      form.set("bundleIds", JSON.stringify(purchasableBundleIds));
       form.set("paymentMethod", paymentSlug);
       form.set("termsAccepted", termsAccepted ? "true" : "false");
       form.set("receipt", receipt);
@@ -452,6 +571,11 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
         }));
         return;
       }
+      if (payload.code === "already_purchased") {
+        setStep(2);
+        setSelectionError(payload.message || "Those items are already on your account.");
+        return;
+      }
       if (!response.ok || !payload.ok) {
         throw new Error(payload.message || "Could not submit your registration.");
       }
@@ -463,10 +587,23 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
     }
   }
 
+  if (!sessionReady) {
+    return (
+      <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="-mx-5 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-white">
+          Magster
+        </div>
+        <p className="mt-16 text-center text-[14px] text-muted">Checking your Magster account…</p>
+      </main>
+    );
+  }
+
   if (success) {
     return (
-      <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,calc(env(safe-area-inset-top)+0.75rem))]">
-        <p className="text-center text-[20px] font-bold tracking-[-0.03em] text-ink">Magster</p>
+      <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="-mx-5 bg-header px-5 pb-3 pt-[max(0.6rem,env(safe-area-inset-top))] text-center text-[15px] font-semibold text-white">
+          Magster
+        </div>
         <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
           <p className="text-5xl" aria-hidden="true">
             🎉
@@ -484,31 +621,25 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]">
-      <div className="mb-2 flex shrink-0 items-center justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            if (step === 1) {
-              router.push("/");
-              return;
-            }
-            setStep((current) => current - 1);
-          }}
-          className="h-11 text-sm font-semibold text-brand touch-manipulation"
-        >
-          Back
-        </button>
-        <BrandMark size="sm" />
-      </div>
-      <WizardProgress step={step} total={STEPS} />
+    <main className="flex h-full min-h-0 flex-1 flex-col px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <WizardHeader
+        step={step}
+        total={STEPS}
+        onBack={() => {
+          if (step === 1) {
+            router.push("/");
+            return;
+          }
+          setStep((current) => current - 1);
+        }}
+      />
 
       {step === 1 ? (
         <section className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-          <h1 className="text-[26px] font-bold tracking-[-0.04em] text-ink">Your profile</h1>
-          <p className="mt-1 text-sm text-muted">A few details to create your Magster account.</p>
-          <div className="mt-5 space-y-4">
+          <h1 className="text-[16px] font-semibold tracking-tight text-ink">Your profile</h1>
+          <p className="mt-0.5 text-[12px] text-muted">A few details to create your Magster account.</p>
+          <div className="mt-3 space-y-2.5">
             <TextField
               id="full-name"
               label="Full Name"
@@ -596,61 +727,90 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
 
       {step === 2 ? (
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <h1 className="shrink-0 text-[26px] font-bold tracking-[-0.04em] text-ink">Choose learning</h1>
-          <p className="mt-1 shrink-0 text-sm text-muted">Select Magster bundles and courses. You can pick more than one.</p>
-          <div className="mt-4 grid shrink-0 grid-cols-2 rounded-card bg-white p-1 shadow-soft">
+          <div className="flex shrink-0 items-center justify-between gap-3 pt-3">
+            <h1 className="min-w-0 truncate text-[16px] font-semibold tracking-tight text-ink">
+              Choose learning
+            </h1>
+            <span className="shrink-0 text-[11px] font-medium text-muted">
+              {selectedCount ? `${selectedCount} selected` : "Pick any"}
+            </span>
+          </div>
+          <div className="mt-2 flex h-10 shrink-0 items-center gap-2 rounded-card border border-line bg-white px-2.5">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M16 16.5 20 20.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <input
+              value={catalogQuery}
+              onChange={(event) => setCatalogQuery(event.target.value)}
+              placeholder="Search bundles or courses"
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-hint"
+            />
+          </div>
+          <div className="mt-2 grid shrink-0 grid-cols-2 rounded-card bg-white p-0.5">
             {(["bundles", "courses"] as const).map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setTab(item)}
-                className={`h-11 rounded-[16px] text-sm font-bold touch-manipulation ${
-                  tab === item ? "bg-brand text-white" : "text-muted"
+                className={`h-9 rounded-[10px] text-[13px] font-semibold touch-manipulation ${
+                  tab === item ? "bg-header text-white" : "text-muted"
                 }`}
               >
                 {item === "bundles" ? "Bundles" : "Courses"}
               </button>
             ))}
           </div>
-          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pb-3">
+          <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pb-2">
             {tab === "bundles"
-              ? bundles.map((bundle) => (
+              ? filteredBundles.map((bundle) => {
+                  const alreadyOwned = owned.bundleIds.has(bundle.id);
+                  const purchasable = isPurchasableBundle(bundle);
+                  return (
                   <BundleSelectCard
                     key={bundle.id}
                     bundle={bundle}
-                    selected={bundleIds.includes(bundle.id)}
-                    disabled={!isPurchasableBundle(bundle)}
+                    selected={purchasableBundleIds.includes(bundle.id)}
+                    disabled={alreadyOwned || !purchasable}
+                    lockLabel={catalogLockLabel(alreadyOwned, purchasable)}
                     onToggle={() => {
                       setBundleIds((current) => toggleId(current, bundle.id));
                       setSelectionError(null);
                     }}
                     onPreview={() => setPreviewBundle(bundle)}
                   />
-                ))
-              : courses.map((course) => (
+                  );
+                })
+              : filteredCourses.map((course) => {
+                  const alreadyOwned = owned.courseIds.has(course.id);
+                  const purchasable = isPurchasableCourse(course);
+                  return (
                   <CourseSelectCard
                     key={course.id}
                     course={course}
-                    selected={courseIds.includes(course.id)}
-                    disabled={!isPurchasableCourse(course)}
+                    selected={purchasableCourseIds.includes(course.id)}
+                    disabled={alreadyOwned || !purchasable}
+                    lockLabel={catalogLockLabel(alreadyOwned, purchasable)}
                     onToggle={() => {
                       setCourseIds((current) => toggleId(current, course.id));
                       setSelectionError(null);
                     }}
                   />
-                ))}
+                  );
+                })}
+            {(tab === "bundles" ? filteredBundles : filteredCourses).length === 0 ? (
+              <p className="py-8 text-center text-[13px] text-muted">No matches for that search.</p>
+            ) : null}
           </div>
-          <div className="shrink-0 space-y-3 border-t border-line bg-canvas pt-3">
+          <div className="shrink-0 space-y-2 border-t border-line bg-canvas pt-2">
           {selectionError ? (
             <p role="alert" className="text-sm font-medium text-danger">
               {selectionError}
             </p>
           ) : null}
-          <div className="rounded-card border border-line bg-white px-4 py-3 shadow-soft">
-            <p className="text-sm font-bold text-ink">{formatSelectionTotal(total)}</p>
-            <p className="mt-0.5 text-xs text-muted">
-              {selectedCount ? `${selectedCount} selected` : "Nothing selected yet"}
-            </p>
+          <div className="flex items-center justify-between rounded-card border border-line bg-white px-3 py-2">
+            <p className="text-[13px] font-semibold text-ink">{formatSelectionTotal(total)}</p>
+            <p className="text-[11px] text-muted">{selectedCount ? `${selectedCount} selected` : "None selected"}</p>
           </div>
           <PrimaryButton onClick={goNextFromCatalog}>Continue</PrimaryButton>
           </div>
@@ -660,94 +820,79 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       {step === 3 ? (
         <section className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-          <h1 className="text-[26px] font-bold tracking-[-0.04em] text-ink">Payment method</h1>
-          <p className="mt-1 text-sm text-muted">Pay the exact Magster total to one of the accounts below.</p>
-          <div className="mt-5 space-y-3">
+          <h1 className="text-[16px] font-semibold tracking-tight text-ink">Payment method</h1>
+          <p className="mt-0.5 text-[12px] text-muted">Pay the exact Magster total to one of the accounts below.</p>
+          <div className="mt-3 space-y-2">
             {methods.map((method) => {
               const selected = method.slug === paymentSlug;
               return (
-                <button
+                <div
                   key={method.slug}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => {
-                    setPaymentSlug(method.slug);
-                    setPaymentError(null);
-                  }}
-                  className={`w-full rounded-card border p-4 text-left shadow-soft touch-manipulation ${
-                    selected ? "border-brand bg-brand/5" : "border-line bg-surface"
+                  className={`rounded-card border ${
+                    selected ? "border-header bg-white" : "border-line bg-surface"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-ink">{method.name}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        {method.accountHolder || "Account holder unavailable"}
-                      </p>
-                    </div>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => {
+                      setPaymentSlug(method.slug);
+                      setPaymentError(null);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left touch-manipulation"
+                  >
+                    <p className="text-[13px] font-semibold text-ink">{method.name}</p>
                     <SelectionDot selected={selected} />
-                  </div>
-                </button>
+                  </button>
+                  {selected ? (
+                    <div className="space-y-2 border-t border-line px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-hint">
+                            Account holder
+                          </p>
+                          <p className="truncate text-[13px] font-medium text-ink">
+                            {method.accountHolder || "—"}
+                          </p>
+                        </div>
+                        {method.accountHolder ? (
+                          <button
+                            type="button"
+                            className="shrink-0 text-[11px] font-semibold text-header"
+                            onClick={() => void copyValue(`${method.slug}-holder`, method.accountHolder)}
+                          >
+                            {copiedField === `${method.slug}-holder` ? "Copied" : "Copy"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-canvas px-2.5 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-hint">
+                            Account number
+                          </p>
+                          <p className="font-mono text-[14px] font-semibold tracking-wide text-ink">
+                            {method.accountNumber || "—"}
+                          </p>
+                        </div>
+                        {method.accountNumber ? (
+                          <button
+                            type="button"
+                            className="shrink-0 text-[11px] font-semibold text-header"
+                            onClick={() => void copyValue(`${method.slug}-number`, method.accountNumber)}
+                          >
+                            {copiedField === `${method.slug}-number` ? "Copied" : "Copy"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <p className="text-[12px] font-semibold text-ink">{formatSelectionTotal(total)}</p>
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </div>
-          {selectedMethod ? (
-            <div className="mt-4 rounded-card border border-line bg-white p-4 shadow-soft">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">Pay to</p>
-              <p className="mt-2 text-sm font-semibold text-ink">{selectedMethod.name}</p>
-              <div className="mt-3 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-hint">
-                      Account Holder Name
-                    </p>
-                    <p className="mt-0.5 text-sm font-medium text-ink">
-                      {selectedMethod.accountHolder || "—"}
-                    </p>
-                  </div>
-                  {selectedMethod.accountHolder ? (
-                    <button
-                      type="button"
-                      className="text-xs font-bold text-brand"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(selectedMethod.accountHolder);
-                        setCopied(true);
-                        window.setTimeout(() => setCopied(false), 1500);
-                      }}
-                    >
-                      {copied ? "Copied" : "Copy"}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="flex items-start justify-between gap-3 rounded-2xl bg-canvas px-3 py-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-hint">
-                      Account Number
-                    </p>
-                    <p className="mt-1 font-mono text-base font-bold tracking-wide text-ink">
-                      {selectedMethod.accountNumber || "—"}
-                    </p>
-                  </div>
-                  {selectedMethod.accountNumber ? (
-                    <button
-                      type="button"
-                      className="text-xs font-bold text-brand"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(selectedMethod.accountNumber);
-                        setCopied(true);
-                        window.setTimeout(() => setCopied(false), 1500);
-                      }}
-                    >
-                      {copied ? "Copied" : "Copy"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <p className="mt-3 text-sm font-bold text-brand">{formatSelectionTotal(total)}</p>
-            </div>
-          ) : null}
           {paymentError ? (
-            <p role="alert" className="mt-3 text-sm font-medium text-danger">
+            <p role="alert" className="mt-2 text-sm font-medium text-danger">
               {paymentError}
             </p>
           ) : null}
@@ -761,13 +906,12 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       {step === 4 ? (
         <section className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-          <h1 className="text-[26px] font-bold tracking-[-0.04em] text-ink">Upload receipt</h1>
-          <p className="mt-1 text-sm text-muted">Confirm the payment details, then attach your receipt.</p>
-          <div className="mt-5 rounded-card border border-line bg-white p-4 shadow-soft">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">Summary</p>
-            <p className="mt-2 text-sm font-semibold text-ink">{selectedMethod?.name}</p>
-            <p className="mt-1 text-xs text-muted">{selectedLabels.join(" · ")}</p>
-            <p className="mt-3 text-sm font-bold text-brand">{formatSelectionTotal(total)}</p>
+          <h1 className="text-[16px] font-semibold tracking-tight text-ink">Upload receipt</h1>
+          <p className="mt-0.5 text-[12px] text-muted">Confirm the payment, then attach your receipt.</p>
+          <div className="mt-3 rounded-card border border-line bg-white px-3 py-2.5">
+            <p className="text-[13px] font-semibold text-ink">{selectedMethod?.name}</p>
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted">{selectedLabels.join(" · ")}</p>
+            <p className="mt-1 text-[13px] font-semibold text-ink">{formatSelectionTotal(total)}</p>
           </div>
           <input
             ref={fileInputRef}
@@ -779,11 +923,11 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="mt-4 flex min-h-40 w-full flex-col items-center justify-center overflow-hidden rounded-card border border-dashed border-brand/40 bg-brand/5 px-4 text-center touch-manipulation"
+            className="mt-3 flex min-h-28 w-full flex-col items-center justify-center overflow-hidden rounded-card border border-dashed border-line bg-white px-3 text-center touch-manipulation"
           >
             {receiptPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={receiptPreview} alt="Receipt preview" className="max-h-48 w-full object-contain" />
+              <img src={receiptPreview} alt="Receipt preview" className="max-h-28 w-full object-contain" />
             ) : (
               <>
                 <p className="text-sm font-bold text-ink">Tap to upload receipt</p>
@@ -828,11 +972,11 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
               </div>
             </div>
           ) : null}
-          <div className="mt-4 space-y-3 rounded-card border border-line bg-white p-4 shadow-soft">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">
+          <div className="mt-3 space-y-2 rounded-card border border-line bg-white px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
               Terms and policies
             </p>
-            <label className="flex items-start gap-3 text-sm text-ink">
+            <label className="flex items-start gap-2 text-[12px] leading-4 text-ink">
               <input
                 type="checkbox"
                 checked={termsAccepted}
@@ -853,7 +997,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                 .
               </span>
             </label>
-            <label className="flex items-start gap-3 text-sm text-ink">
+            <label className="flex items-start gap-2 text-[12px] leading-4 text-ink">
               <input
                 type="checkbox"
                 checked={termsAccepted}

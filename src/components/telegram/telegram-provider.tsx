@@ -45,7 +45,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     const webApp = getWebApp();
     webApp?.ready();
     webApp?.expand();
-    webApp?.setHeaderColor?.(MAGSTER_COLORS.primary);
+    webApp?.setHeaderColor?.(MAGSTER_COLORS.header);
     webApp?.setBackgroundColor?.(MAGSTER_COLORS.background);
     if (webApp?.platform) setPlatform(webApp.platform);
 
