@@ -12,7 +12,7 @@ import {
   resolveDefaultStream,
 } from "@/lib/magster/registration";
 import { MINI_APP_DEFAULT_PIN, MINI_APP_TERMS_ACCEPTED } from "@/lib/server/registration-defaults";
-import { readAppSession, writeAppSession } from "@/lib/session/app-session";
+import { createMiniAppDeviceId, readAppSession, writeAppSession } from "@/lib/session/app-session";
 import { attachTelegramToStudent } from "@/lib/magster/telegram-link";
 import {
   hasErrors,
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await readAppSession();
+    let session = await readAppSession();
 
     // A previous checkout may have left a studentId in the session cookie.
     // Only reuse it when it actually corresponds to the submitted phone —
@@ -120,6 +120,10 @@ export async function POST(request: Request) {
           { status: 409 },
         );
       }
+      // Do not reuse the cookie device id for a *new* student. Magster allows
+      // 5 accounts per device; one Mini App cookie was blocking every extra test
+      // registration after that cap.
+      const signupDeviceId = createMiniAppDeviceId();
       const registered = await registerMagsterStudent({
         fullName: profile.fullName,
         phone: profile.phone,
@@ -128,7 +132,7 @@ export async function POST(request: Request) {
         institution: profile.institution,
         stream: resolveDefaultStream(catalog),
         pin: MINI_APP_DEFAULT_PIN,
-        deviceId: session.deviceId,
+        deviceId: signupDeviceId,
         termsAccepted: MINI_APP_TERMS_ACCEPTED,
       });
       if (!registered.ok) {
@@ -138,12 +142,14 @@ export async function POST(request: Request) {
         );
       }
       studentId = registered.studentId;
-      await writeAppSession({
+      session = {
         ...session,
+        deviceId: signupDeviceId,
         studentId,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
-      });
+      };
+      await writeAppSession(session);
     }
 
     // Associate Telegram identity from cookie and/or HMAC-validated initData.

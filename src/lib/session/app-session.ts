@@ -13,6 +13,11 @@ export type AppSession = {
   exp: number;
 };
 
+/** Magster counts up to 5 students per device id. Mini App has no hardware id, so each new student gets a fresh slot. */
+export function createMiniAppDeviceId(): string {
+  return `miniapp:${randomUUID()}`;
+}
+
 function encode(value: string): string {
   return Buffer.from(value, "utf8").toString("base64url");
 }
@@ -56,7 +61,7 @@ export async function readAppSession(): Promise<AppSession> {
 
   const iat = Math.floor(Date.now() / 1000);
   const session: AppSession = {
-    deviceId: `miniapp:${randomUUID()}`,
+    deviceId: createMiniAppDeviceId(),
     studentId: null,
     iat,
     exp: iat + SESSION_TTL_SECONDS,
