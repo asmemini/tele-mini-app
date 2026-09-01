@@ -3,6 +3,17 @@ import { asNumber, asRecord, asString } from "@/lib/magster/parse";
 import type { MagsterPaymentMethod } from "@/lib/magster/types";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 
+function isPlaceholderAccount(value: string): boolean {
+  const compact = value.replace(/\s+/g, "");
+  return !compact || /^0+$/.test(compact);
+}
+
+function preferAccount(primary: string, secondary: string): string {
+  if (!isPlaceholderAccount(primary)) return primary;
+  if (!isPlaceholderAccount(secondary)) return secondary;
+  return primary || secondary;
+}
+
 function mapPaymentMethod(item: Record<string, unknown>, fallbackId = 0): MagsterPaymentMethod {
   const slug = asString(item.slug || item.id).trim();
   return {
@@ -29,8 +40,14 @@ function mergeMethods(
     bySlug.set(method.slug, {
       ...existing,
       ...method,
-      accountHolder: method.accountHolder || existing?.accountHolder || "",
-      accountNumber: method.accountNumber || existing?.accountNumber || "",
+      accountHolder: preferAccount(
+        method.accountHolder,
+        existing?.accountHolder || "",
+      ),
+      accountNumber: preferAccount(
+        method.accountNumber,
+        existing?.accountNumber || "",
+      ),
       name: method.name || existing?.name || "",
     });
   }

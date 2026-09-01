@@ -447,8 +447,8 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
           <p className="text-5xl" aria-hidden="true">
             🎉
           </p>
-          <h1 className="mt-4 text-[26px] font-bold tracking-[-0.04em] text-ink">
-            🎉 You&apos;ve completed registration!
+          <h1 className="mt-4 text-[24px] font-bold tracking-[-0.04em] text-ink">
+            You&apos;ve completed registration!
           </h1>
           <p className="mt-4 max-w-[22rem] text-[15px] leading-6 text-muted">
             Once we verify your submitted information and receipt, your account will be approved. ✅
@@ -571,7 +571,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       ) : null}
 
       {step === 2 ? (
-        <section className="flex min-h-0 flex-1 flex-col">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <h1 className="shrink-0 text-[26px] font-bold tracking-[-0.04em] text-ink">Choose learning</h1>
           <p className="mt-1 shrink-0 text-sm text-muted">Select Magster bundles and courses. You can pick more than one.</p>
           <div className="mt-4 grid shrink-0 grid-cols-2 rounded-card bg-white p-1 shadow-soft">
@@ -616,7 +616,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
                   />
                 ))}
           </div>
-          <div className="sticky bottom-0 shrink-0 space-y-3 bg-canvas pt-3">
+          <div className="shrink-0 space-y-3 border-t border-line bg-canvas pt-3">
           {selectionError ? (
             <p role="alert" className="text-sm font-medium text-danger">
               {selectionError}

@@ -1,6 +1,7 @@
 export function closeTelegramMiniApp() {
   const webApp = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
-  if (webApp?.close) {
+  webApp?.ready?.();
+  if (typeof webApp?.close === "function") {
     webApp.close();
     return;
   }

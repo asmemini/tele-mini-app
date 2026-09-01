@@ -13,3 +13,10 @@ export function normalizeEthiopianPhone(raw: string): string {
   }
   return digits;
 }
+
+/** Direct Telegram chat link from an Ethiopian local phone (9XXXXXXXX / 7XXXXXXXX). */
+export function telegramContactFromPhone(raw: string): string | null {
+  const local = normalizeEthiopianPhone(raw);
+  if (!/^[79]\d{8}$/.test(local)) return null;
+  return `https://t.me/+251${local}`;
+}

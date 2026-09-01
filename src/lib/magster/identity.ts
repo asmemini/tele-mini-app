@@ -2,14 +2,8 @@ import type { MagsterStudentIdentity } from "@/lib/magster/types";
 import type { TelegramSession } from "@/lib/telegram/session";
 
 /**
- * Future identity graph (not written in Phase 1):
- *
- * Telegram user  →  telegram_identities  →  students  →  student_access
- *
- * Magster `students` currently has no telegram_user_id column.
- * Do not spoof this link from the browser. A later SECURITY DEFINER RPC
- * or service-role server path must create the mapping after initData
- * validation and registration.
+ * Telegram Mini App identity is stored on Magster `students.telegram_user_id`
+ * after initData HMAC verification and attach_student_telegram / link_student_telegram_by_pin.
  */
 export type TelegramStudentLink = {
   telegramUserId: number;
