@@ -146,13 +146,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // Associate the verified Telegram identity with the student. This covers both
-    // brand-new students (just registered above) and existing students whose
-    // signed app session already identified them. It never creates a duplicate
-    // account — it only updates the identified student's telegram_* columns.
-    // A Telegram link failing must not block the payment submission.
+    // Associate Telegram identity from cookie and/or HMAC-validated initData.
+    // Telegram WebView often omits cookies, so checkout must send initData.
     try {
-      await attachTelegramToStudent(studentId, session.deviceId);
+      await attachTelegramToStudent(
+        studentId,
+        session.deviceId,
+        String(form.get("initData") ?? ""),
+      );
     } catch (linkError) {
       console.warn("Telegram link skipped (non-fatal):", linkError);
     }

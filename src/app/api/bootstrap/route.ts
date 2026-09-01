@@ -5,12 +5,24 @@ import { emptyTelegramStudentLink } from "@/lib/magster/identity";
 import { loadActivePaymentMethods } from "@/lib/magster/payment-methods";
 import { loadRegistrationCatalog } from "@/lib/magster/registration";
 import { loadMagsterPublicSettings } from "@/lib/magster/settings";
+import { attachTelegramToStudent, syncTelegramSessionFromInitData } from "@/lib/magster/telegram-link";
 import { isTelegramBotConfigured } from "@/lib/env";
+import { readAppSession } from "@/lib/session/app-session";
 import { readTelegramSession, toPublicIdentity } from "@/lib/telegram/session";
 
 export async function GET() {
+  return handleBootstrap();
+}
+
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => null)) as { initData?: unknown } | null;
+  const initData = typeof body?.initData === "string" ? body.initData : "";
+  return handleBootstrap(initData);
+}
+
+async function handleBootstrap(initData?: string) {
   try {
-    const [session, settings, catalog, paymentMethods, registration] = await Promise.all([
+    const [cookieSession, settings, catalog, paymentMethods, registration] = await Promise.all([
       readTelegramSession(),
       loadMagsterPublicSettings(),
       loadMagsterCatalog(),
@@ -18,6 +30,17 @@ export async function GET() {
       loadRegistrationCatalog(),
     ]);
 
+    const app = await readAppSession();
+    await syncTelegramSessionFromInitData(initData);
+    if (app.studentId) {
+      try {
+        await attachTelegramToStudent(app.studentId, app.deviceId, initData);
+      } catch (linkError) {
+        console.warn("Telegram attach on bootstrap skipped:", linkError);
+      }
+    }
+
+    const session = (await readTelegramSession()) ?? cookieSession;
     const config = composeMiniAppConfig(settings);
 
     return NextResponse.json({

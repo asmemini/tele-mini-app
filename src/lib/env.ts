@@ -11,6 +11,7 @@ export function getServerEnv() {
     supabaseAnonKey: required("SUPABASE_ANON_KEY", process.env.SUPABASE_ANON_KEY),
     sessionSecret: required("SESSION_SECRET", process.env.SESSION_SECRET),
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN?.trim() || "",
+    telegramChannelId: process.env.TELEGRAM_CHANNEL_ID?.trim() || "",
     telegramAuthMaxAgeSeconds: Number(process.env.TELEGRAM_AUTH_MAX_AGE_SECONDS || 86400),
   };
 }

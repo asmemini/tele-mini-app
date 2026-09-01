@@ -1,5 +1,13 @@
 import { MagsterRpc } from "@/lib/magster/tables";
-import { readTelegramSession } from "@/lib/telegram/session";
+import { getServerEnv, isTelegramBotConfigured } from "@/lib/env";
+import { sendChannelInvitesForApprovedPayments } from "@/lib/telegram/channel-invite";
+import {
+  createTelegramSession,
+  readTelegramSession,
+  writeTelegramSession,
+  type TelegramSession,
+} from "@/lib/telegram/session";
+import { validateTelegramInitData } from "@/lib/telegram/validate";
 import { getMagsterSupabase } from "@/lib/supabase/server";
 
 export type AttachTelegramLinkResult =
@@ -16,21 +24,47 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+async function resolveVerifiedTelegramSession(
+  initData?: string | null,
+): Promise<TelegramSession | null> {
+  const raw = initData?.trim() ?? "";
+  if (raw && isTelegramBotConfigured()) {
+    try {
+      const env = getServerEnv();
+      const validated = validateTelegramInitData(
+        raw,
+        env.telegramBotToken,
+        env.telegramAuthMaxAgeSeconds,
+      );
+      const session = createTelegramSession(validated.user);
+      await writeTelegramSession(session);
+      return session;
+    } catch {
+      // Invalid initData on this request — fall back to a previously verified cookie.
+    }
+  }
+
+  return readTelegramSession();
+}
+
+export async function syncTelegramSessionFromInitData(initData?: string | null) {
+  return resolveVerifiedTelegramSession(initData);
+}
+
 /**
- * Links the currently verified Telegram identity (from the signed httpOnly
- * session cookie) to a Magster student. This is the ONLY place the Mini App
- * writes Telegram identity to the student record.
+ * Links a verified Telegram identity to a Magster student. Identity comes from
+ * the signed httpOnly session cookie, or from HMAC-validated WebApp initData
+ * on the same request (Telegram WebView often drops cookies).
  *
- * Security: the Telegram session is only established after the server verified
- * Telegram WebApp initData (HMAC-SHA256 against the bot token). The student id
- * comes from this server's own signed app session / just-created registration,
- * never from the browser. The DB write is a SECURITY DEFINER RPC.
+ * The student id comes from this server's own signed app session / just-created
+ * registration, never from the browser. The DB write is a SECURITY DEFINER RPC.
  */
 export async function attachTelegramToStudent(
   studentId: number,
   deviceId: string,
+  initData?: string | null,
 ): Promise<AttachTelegramLinkResult> {
-  const session = await readTelegramSession();
+  const session = await resolveVerifiedTelegramSession(initData);
   if (!session) {
     // No verified Telegram identity — nothing to link. Not an error.
     return { ok: true };
@@ -58,6 +92,7 @@ export async function attachTelegramToStudent(
   const map = asRecord(data);
 
   if (map.success === true) {
+    await sendChannelInvitesForApprovedPayments(studentId);
     return { ok: true };
   }
 
@@ -74,9 +109,8 @@ export async function attachTelegramToStudent(
  *
  * Security: two independent, server-validated gates are required before the link
  * is written:
- *   1. The Telegram identity is only taken from the signed httpOnly session
- *      cookie, which exists only after initData was HMAC-validated against the
- *      bot token by this server.
+ *   1. Telegram identity from HMAC-validated initData (this request) or the
+ *      signed session cookie created after the same check.
  *   2. The phone + PIN are verified by the SECURITY DEFINER RPC server-side
  *      (same PIN check the Flutter app uses). A phone number alone is never
  *      trusted and never enough to attach Telegram.
@@ -86,13 +120,14 @@ export async function attachTelegramToStudent(
 export async function linkTelegramToExistingStudent(input: {
   phone: string;
   pin: string;
+  initData?: string | null;
 }): Promise<LinkExistingResult> {
-  const session = await readTelegramSession();
+  const session = await resolveVerifiedTelegramSession(input.initData);
   if (!session) {
     return {
       ok: false,
       code: "telegram_unverified",
-      message: "Telegram identity is not verified.",
+      message: "Telegram identity is not verified. Open Magster from Telegram, not a browser tab.",
     };
   }
 
@@ -117,6 +152,7 @@ export async function linkTelegramToExistingStudent(input: {
   if (map.success === true) {
     const studentId = Number(map.student_id);
     if (Number.isFinite(studentId) && studentId > 0) {
+      await sendChannelInvitesForApprovedPayments(studentId);
       return { ok: true, studentId };
     }
     return { ok: false, code: "server_error", message: "Could not link your account." };

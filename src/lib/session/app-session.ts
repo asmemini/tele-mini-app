@@ -69,10 +69,11 @@ export async function writeAppSession(session: AppSession): Promise<void> {
   const { sessionSecret } = getServerEnv();
   const store = await cookies();
   const payload = encode(JSON.stringify(session));
+  const production = process.env.NODE_ENV === "production";
   store.set(APP_SESSION_COOKIE, `${payload}.${sign(payload, sessionSecret)}`, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: production ? "none" : "lax",
+    secure: production,
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });

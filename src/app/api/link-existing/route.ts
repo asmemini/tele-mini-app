@@ -10,11 +10,12 @@ const PIN_PATTERN = /^\d{4}$/;
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as
-      | { phone?: unknown; pin?: unknown }
+      | { phone?: unknown; pin?: unknown; initData?: unknown }
       | null;
 
     const phone = String(body?.phone ?? "").trim();
     const pin = String(body?.pin ?? "").trim();
+    const initData = typeof body?.initData === "string" ? body.initData : "";
 
     const formatError = validateLocalPhone(phone);
     if (formatError || !PIN_PATTERN.test(pin)) {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await linkTelegramToExistingStudent({ phone, pin });
+    const result = await linkTelegramToExistingStudent({ phone, pin, initData });
     if (!result.ok) {
       return NextResponse.json(
         { ok: false, code: result.code, message: result.message },

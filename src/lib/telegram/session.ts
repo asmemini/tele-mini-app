@@ -82,10 +82,12 @@ export async function readTelegramSession(): Promise<TelegramSession | null> {
 export async function writeTelegramSession(session: TelegramSession): Promise<void> {
   const { sessionSecret } = getServerEnv();
   const store = await cookies();
+  const production = process.env.NODE_ENV === "production";
   store.set(TELEGRAM_SESSION_COOKIE, serializeTelegramSession(session, sessionSecret), {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // Telegram WebView is a third-party context; Lax cookies often never arrive on API calls.
+    sameSite: production ? "none" : "lax",
+    secure: production,
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });

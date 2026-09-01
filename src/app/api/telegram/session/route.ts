@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { attachTelegramToStudent } from "@/lib/magster/telegram-link";
 import { getServerEnv, isTelegramBotConfigured } from "@/lib/env";
+import { readAppSession } from "@/lib/session/app-session";
 import {
   clearTelegramSession,
   createTelegramSession,
@@ -45,6 +47,14 @@ export async function POST(request: Request) {
     );
     const session = createTelegramSession(validated.user);
     await writeTelegramSession(session);
+    const app = await readAppSession();
+    if (app.studentId) {
+      try {
+        await attachTelegramToStudent(app.studentId, app.deviceId, initData);
+      } catch (linkError) {
+        console.warn("Telegram attach on session skipped:", linkError);
+      }
+    }
     return NextResponse.json({
       status: "authenticated",
       identity: toPublicIdentity(session),

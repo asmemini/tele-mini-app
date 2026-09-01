@@ -20,6 +20,7 @@ import {
 } from "@/lib/catalog/selection";
 import type { MagsterBundle, MagsterCourse } from "@/lib/magster/types";
 import { closeTelegramMiniApp } from "@/lib/telegram/close";
+import { readTelegramWebAppInitData } from "@/lib/telegram/client";
 import {
   hasErrors,
   validateLocalPhone,
@@ -275,7 +276,11 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: profile.phone, pin: linkPin.trim() }),
+        body: JSON.stringify({
+          phone: profile.phone,
+          pin: linkPin.trim(),
+          initData: readTelegramWebAppInitData(),
+        }),
       });
       const payload = (await response.json()) as {
         ok?: boolean;
@@ -414,6 +419,7 @@ export function RegistrationFlow({ initial }: { initial: BootstrapPayload }) {
       form.set("paymentMethod", paymentSlug);
       form.set("termsAccepted", termsAccepted ? "true" : "false");
       form.set("receipt", receipt);
+      form.set("initData", readTelegramWebAppInitData());
       const response = await fetch("/api/checkout", {
         method: "POST",
         credentials: "include",

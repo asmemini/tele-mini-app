@@ -1,5 +1,10 @@
 import type { PublicTelegramIdentity } from "@/lib/telegram/types";
 
+export function readTelegramWebAppInitData(): string {
+  if (typeof window === "undefined") return "";
+  return window.Telegram?.WebApp?.initData?.trim() ?? "";
+}
+
 export async function establishTelegramSession(
   initData: string,
 ): Promise<{ identity: PublicTelegramIdentity | null; status: string; message: string }> {

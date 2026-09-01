@@ -6,6 +6,7 @@ import { useTelegramIdentity } from "@/components/telegram/telegram-provider";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import type { MiniAppConfig } from "@/lib/config/mini-app-config";
 import type { MagsterCatalog } from "@/lib/magster/types";
+import { readTelegramWebAppInitData } from "@/lib/telegram/client";
 
 type BootstrapResponse = {
   ok: boolean;
@@ -22,8 +23,16 @@ export function WelcomeScreen() {
   const [catalog, setCatalog] = useState<MagsterCatalog | null>(null);
 
   useEffect(() => {
+    if (telegram.state === "loading" || telegram.state === "validating") return;
+
     let cancelled = false;
-    fetch("/api/bootstrap", { credentials: "include" })
+    setLoading(true);
+    fetch("/api/bootstrap", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: readTelegramWebAppInitData() }),
+    })
       .then(async (response) => {
         const payload = (await response.json()) as BootstrapResponse;
         if (!response.ok || !payload.ok) {
@@ -43,7 +52,7 @@ export function WelcomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [telegram.state]);
 
   const title = config?.welcomeTitle ?? "Welcome to Registration";
 
